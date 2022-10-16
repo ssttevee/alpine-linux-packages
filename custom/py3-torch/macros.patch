@@ -1,0 +1,37 @@
+--- a/c10/macros/Macros.h
++++ b/c10/macros/Macros.h
+@@ -351,34 +351,6 @@ __host__ __device__
+     (void)(_wassert(_CRT_WIDE(#cond), _CRT_WIDE(__FILE__), static_cast<unsigned>(__LINE__)), 0); \
+   }
+ #else // __APPLE__, _MSC_VER
+-#if defined(NDEBUG)
+-extern "C" {
+-#if defined(__SYCL_DEVICE_ONLY__)
+-extern SYCL_EXTERNAL void __assert_fail(
+-    const char* expr,
+-    const char* file,
+-    unsigned int line,
+-    const char* func);
+-#else // __SYCL_DEVICE_ONLY__
+-#if (defined(__CUDA_ARCH__) && !(defined(__clang__) && defined(__CUDA__)))
+-__host__ __device__
+-#endif // __CUDA_ARCH__
+-    void
+-    __assert_fail(
+-        const char* assertion,
+-        const char* file,
+-        unsigned int line,
+-        const char* function) throw()
+-// We match the declaration of __assert_fail exactly how it is in glibc in case
+-// parts of the program are compiled with different NDEBUG settings. Otherwise
+-// we might get 'ambiguous declaration' error.
+-#ifdef __GNUC__
+-        __attribute__((__noreturn__))
+-#endif
+-        ;
+-#endif
+-}
+-#endif // NDEBUG
+ #define CUDA_KERNEL_ASSERT(cond)                                         \
+   if (C10_UNLIKELY(!(cond))) {                                           \
+     __assert_fail(                                                       \

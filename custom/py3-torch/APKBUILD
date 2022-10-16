@@ -1,0 +1,64 @@
+# Contributor:
+# Maintainer:
+pkgname=py3-torch
+pkgver=1.12.1
+pkgrel=0
+pkgdesc="Tensors and Dynamic neural networks in Python with strong GPU acceleration"
+url="https://github.com/pytorch/pytorch"
+arch="all"
+license="Modified BSD license"
+depends=""
+makedepends="
+	cmake
+	libexecinfo-dev
+	linux-headers
+	py3-numpy-dev
+	py3-psutil
+	py3-setuptools
+	py3-typing-extensions
+	py3-yaml
+	python3-dev
+	pythonispython3
+	"
+checkdepends=""
+install=""
+subpackages="$pkgname-dev"
+source="
+	gloo.patch
+	macros.patch
+	tensorpipe.patch
+	flatbuffers.patch
+	"
+builddir="$srcdir"
+
+unpack() {
+	mkdir -p "$srcdir"
+
+	git -C "$srcdir" init
+	git -C "$srcdir" fetch --depth 1 https://github.com/pytorch/pytorch.git "v$pkgver"
+	git -C "$srcdir" clean -f
+	git -C "$srcdir" reset --hard HEAD || true
+	git -C "$srcdir" checkout FETCH_HEAD
+	sed -i 's|url =|shallow = true\n    url = |g' "$srcdir/.gitmodules"
+	git -C "$srcdir" submodule sync
+	git -C "$srcdir" submodule update --init --recursive --jobs 0
+
+	default_unpack
+}
+
+build() {
+	python3 setup.py build -j ${JOBS:-2}
+}
+
+package() {
+	python3 setup.py install --prefix=/usr --root="$pkgdir"
+	install -D -m 644 LICENSE \
+		"$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}
+
+sha512sums="
+9167385dfb2821d436de39154371d8f41bc5850d584e9d3f008952c720c5009207a4f725ee0faf8e7c1aa136ca40177056793413c44e72c13e09358d479004aa  gloo.patch
+78e8b61249c818a07da91d317339c9c532f3c70ed1c9f861cfb802b9b51640fbb2fb3882b6185bda863419a8045713179363aa6c74fdc411665c3f60a2107822  macros.patch
+392676a76df25d16712f6c29f3c8074252aef3d2ef1694ac8cb6550f4f2d80ceef411812f80f983aae5e68cb90f8f16d61dda8cbaf1e519da33e66d5c1542c67  tensorpipe.patch
+597c828ace3b806cbf698c2bf29b436475f30e7dd0a9b4bb2713fdbf66e7d352e2423ac699d27861a605486c9416c175be09850f6fd34f32ddb100c0dc69e8fa  flatbuffers.patch
+"
