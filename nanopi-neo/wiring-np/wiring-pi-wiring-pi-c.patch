@@ -1,0 +1,20 @@
+--- a/wiringPi/wiringPi.c
++++ b/wiringPi/wiringPi.c
+@@ -1658,8 +1658,6 @@
+           printf("This NanoPi model is currently not supported. \n");
+         }
+       }
+-    } else {
+-        piBoardRevOops("Is not NanoPi based board. ");
+     }
+     return 0;
+ }
+@@ -1674,8 +1672,6 @@
+  */
+ 
+ void piBoardId(int *model, int *rev, int *mem, int *maker, int *overVolted) {
+-    (void) piBoardRev(); // Call this first to make sure all's OK. Don't care about the result.
+-
+     BoardHardwareInfo* retBoardInfo;
+     int ret = getBoardType(&retBoardInfo);
+     if (ret >= 0) {

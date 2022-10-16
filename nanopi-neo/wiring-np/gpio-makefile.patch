@@ -1,0 +1,16 @@
+--- a/gpio/Makefile
++++ b/gpio/Makefile
+@@ -63,11 +63,11 @@
+ 	@ctags $(SRC)
+ 
+ .PHONY:	install
+-install:
++install: gpio
+ 	@echo "[Install]"
+ 	@cp gpio		$(DESTDIR)$(PREFIX)/bin
+ 	@chown root.root	$(DESTDIR)$(PREFIX)/bin/gpio
+-	@chmod 4755		$(DESTDIR)$(PREFIX)/bin/gpio
++	@chmod 0755		$(DESTDIR)$(PREFIX)/bin/gpio
+ 	@mkdir -p		$(DESTDIR)$(PREFIX)/man/man1
+ 	@cp gpio.1		$(DESTDIR)$(PREFIX)/man/man1
+ 

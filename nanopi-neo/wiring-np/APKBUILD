@@ -1,0 +1,44 @@
+# Contributor:
+# Maintainer:
+pkgname=WiringNP
+pkgver=2.0
+pkgrel=0
+pkgdesc="This is a GPIO access library for NanoPi."
+url="https://github.com/friendlyarm/WiringNP"
+arch="all"
+license="LGPL-3.0-or-later"
+depends="musl"
+makedepends="linux-headers"
+install=""
+subpackages="$pkgname-dev $pkgname-doc"
+source="$pkgname-78f7feeae3989aaae6114ee3f7609c21debcd80f.tar.gz::https://github.com/friendlyarm/WiringNP/archive/78f7feeae3989aaae6114ee3f7609c21debcd80f.tar.gz
+	wiring-pi-makefile.patch
+	dev-lib-makefile.patch
+	gpio-makefile.patch
+	wiring-pi-wiring-pi-c.patch
+	wiring-pi-boardtype-friendlyelec-c.patch"
+builddir="$srcdir/$pkgname-78f7feeae3989aaae6114ee3f7609c21debcd80f"
+options="!check"
+
+build() {
+	mkdir -p "$builddir/usr/lib" "$builddir/usr/local/bin"
+	make -C wiringPi DESTDIR="$builddir/usr" install
+	make -C devLib INCLUDE="-I. -I$builddir/usr/local/include" DESTDIR="$builddir/usr" install
+	make -C gpio LDFLAGS="-L$builddir/usr/lib" DESTDIR="$builddir/usr" install
+}
+
+package() {
+	mkdir -p "$pkgdir/usr/share"
+	cp -r "$builddir/usr/local/bin" "$builddir/usr/local/include" "$builddir/usr/local/lib" "$pkgdir/usr/"
+	cp -r "$builddir/usr/local/man" "$pkgdir/usr/share/"
+	ln -s "libwiringPi.so.$pkgver" "$pkgdir/usr/lib/libwiringPi.so"
+	ln -s "libwiringPiDev.so.$pkgver" "$pkgdir/usr/lib/libwiringPiDev.so"
+}
+
+sha512sums="72b77839692fba01ebe175c312b0edd73443ecbe112c2b1ec911e0e25144c7a620cc8b3828012d781e6406225e3928f3ae4db44dd6652ce8801ccc544ec1d85b  WiringNP-78f7feeae3989aaae6114ee3f7609c21debcd80f.tar.gz
+5272c5c719b47f263e080d65cfcc499abe096e0311f940e9230c2203b07aa950f664080d40ae27a83ce985f19eaa6e6cab303ad4542ee77151ba882c50cfafec  wiring-pi-makefile.patch
+5f9b89d4657716d12efef214ecbf3398ea87a0dc42f1374c99d185d18802d5325d5d9fb3ec0830dada2fa50259dd8e4f6a0b5c5f5a2cec1bacf48884ff668c54  dev-lib-makefile.patch
+b57618ddebb44eb6392267940f49a81d32028180aebca04d1b0d7d29bcf3bc786785ee2c9d6524682177ff1f66a61a2f0365c8af0cb9a727b65d9c4e577c1cc4  gpio-makefile.patch
+a1c4572ed2f0aefc8250d2812bc131efe9af43db6810de32332bd227fbd86314f87f445ab7b8c60810e2b323f08bf3c20f7de2c2b114ad6b52b154de31046595  wiring-pi-wiring-pi-c.patch
+b6be0b52398af723e7f1c6ecadc484f944060e9048d0d8041d1228f85599f174605912ef07e0c154865f1610124bf10b99204b2d3d4c93022ad93a34bab5c7c3  wiring-pi-boardtype-friendlyelec-c.patch
+"

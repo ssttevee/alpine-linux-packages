@@ -1,0 +1,10 @@
+--- a/devLib/Makefile
++++ b/devLib/Makefile
+@@ -95,7 +95,6 @@
+ 	@install -m 0755 -d						$(DESTDIR)$(PREFIX)/lib
+ 	@install -m 0755 libwiringPiDev.so.$(VERSION)			$(DESTDIR)$(PREFIX)/lib/libwiringPiDev.so.$(VERSION)
+ 	@ln -sf $(DESTDIR)$(PREFIX)/lib/libwiringPiDev.so.$(VERSION)	$(DESTDIR)/lib/libwiringPiDev.so
+-	@ldconfig
+ 
+ .PHONEY:	install-static
+ install-static:	$(STATIC) install-headers
