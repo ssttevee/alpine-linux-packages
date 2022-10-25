@@ -1,0 +1,6 @@
+/*/*/pkg
+/*/*/src
+*.bak
+/.gcloudignore
+/cloudbuild.yaml
+/.devcontainer

@@ -1,0 +1,40 @@
+# Contributor: 
+# Maintainer: 
+pkgname=zfp
+pkgver=1.0.0
+pkgrel=0
+pkgdesc="Compressed numerical arrays that support high-speed random access"
+url="https://github.com/LLNL/zfp"
+arch="all"
+license="BSD 3-Clause"
+depends=""
+depends_dev="$pkgname"
+checkdepends=""
+makedepends="
+	cmake
+	"
+subpackages="$pkgname-dev"
+source="
+	$pkgname-$pkgver.tar.gz::https://github.com/LLNL/$pkgname/archive/refs/tags/$pkgver.tar.gz
+	"
+builddir="$srcdir/$pkgname-$pkgver"
+
+
+build() {
+	cmake -DCMAKE_BUILD_TYPE=Release -B build
+    MAKEFLAGS=-j${JOBS:-2} cmake --build build --config Release
+}
+
+check() {
+	cd build && ctest -j ${JOBS:-2}
+}
+
+package() {
+    cmake --install build --config Release --prefix "$pkgdir/usr"
+	install -D -m 644 LICENSE \
+		"$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}
+
+sha512sums="
+68eee625379f05f8841a7a73f68b851f638f10836a38209d2585bd586c4fe77379042b2bde4b57719e986c949201afaa91dbb458acb1ec316ad9b0b6728f9c88  zfp-1.0.0.tar.gz
+"

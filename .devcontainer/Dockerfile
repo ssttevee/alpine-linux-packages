@@ -4,8 +4,12 @@
 ARG VARIANT="3.16"
 FROM mcr.microsoft.com/vscode/devcontainers/base:0-alpine-${VARIANT}
 
+RUN git config --global core.autocrlf input && \
+    git config --global --add safe.directory /home/vscode/aports && \
+    git config --global --add safe.directory /workspaces/alpine-linux-packages
+
 RUN apk update && \
-    apk add --no-cache alpine-sdk && \
+    apk add --no-cache alpine-sdk apkbuild-pypi lua-aports pigz && \
     addgroup vscode abuild && \
     mkdir -p /var/cache/distfiles && \
     chgrp abuild /var/cache/distfiles && \

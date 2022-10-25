@@ -7,7 +7,13 @@ pkgdesc="Tensors and Dynamic neural networks in Python with strong GPU accelerat
 url="https://github.com/pytorch/pytorch"
 arch="all"
 license="Modified BSD license"
-depends=""
+depends="
+	py3-typing-extensions
+	python3
+	"
+depends_dev="
+	py3-torch
+	"
 makedepends="
 	cmake
 	libexecinfo-dev
@@ -24,26 +30,30 @@ checkdepends=""
 install=""
 subpackages="$pkgname-dev"
 source="
+	https://alpine.linux.pkg.muki.pw/snapshots/py3-torch/py3-torch-$pkgver.tar.gz
 	gloo.patch
 	macros.patch
 	tensorpipe.patch
 	flatbuffers.patch
 	"
-builddir="$srcdir"
+builddir="$srcdir/$pkgname-$pkgver"
 
-unpack() {
-	mkdir -p "$srcdir"
+_giturl="https://github.com/pytorch/pytorch.git"
+_gittag="v$pkgver"
 
-	git -C "$srcdir" init
-	git -C "$srcdir" fetch --depth 1 https://github.com/pytorch/pytorch.git "v$pkgver"
-	git -C "$srcdir" clean -f
-	git -C "$srcdir" reset --hard HEAD || true
-	git -C "$srcdir" checkout FETCH_HEAD
-	sed -i 's|url =|shallow = true\n    url = |g' "$srcdir/.gitmodules"
-	git -C "$srcdir" submodule sync
-	git -C "$srcdir" submodule update --init --recursive --jobs 0
+snapshot() {
+	git clone --branch "$_gittag" --single-branch --depth 1 --shallow-submodules --recurse-submodules "$_giturl" "$pkgname-$pkgver"
 
-	default_unpack
+	msg "generating tarball.. (this takes a while)"
+	tar -cf "$pkgname-$pkgver.tar" \
+		--exclude-backups \
+		--exclude-caches-all \
+		--exclude-vcs \
+		"$pkgname-$pkgver"
+
+	rm -rf "$pkgname-$pkgver"
+	
+	pigz "$pkgname-$pkgver.tar"
 }
 
 build() {
@@ -53,10 +63,11 @@ build() {
 package() {
 	python3 setup.py install --prefix=/usr --root="$pkgdir"
 	install -D -m 644 LICENSE \
-		"$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+		"$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
 
 sha512sums="
+d4ed8d96cb58c5c865d9f10a16febddddcdf437bb34cfa608e967d10f3aeaf81b33fa41c4f03d71034a38bf24590ba85a0e40f657e9843b5bfd05130d518a82a  py3-torch-1.12.1.tar.gz
 9167385dfb2821d436de39154371d8f41bc5850d584e9d3f008952c720c5009207a4f725ee0faf8e7c1aa136ca40177056793413c44e72c13e09358d479004aa  gloo.patch
 78e8b61249c818a07da91d317339c9c532f3c70ed1c9f861cfb802b9b51640fbb2fb3882b6185bda863419a8045713179363aa6c74fdc411665c3f60a2107822  macros.patch
 392676a76df25d16712f6c29f3c8074252aef3d2ef1694ac8cb6550f4f2d80ceef411812f80f983aae5e68cb90f8f16d61dda8cbaf1e519da33e66d5c1542c67  tensorpipe.patch

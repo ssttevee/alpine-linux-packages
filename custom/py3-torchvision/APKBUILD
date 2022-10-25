@@ -1,0 +1,47 @@
+# Contributor:
+# Maintainer:
+pkgname=py3-torchvision
+pkgver=0.13.1
+pkgrel=0
+pkgdesc="The torchvision package consists of popular datasets, model architectures, and common image transformations for computer vision"
+url="https://github.com/pytorch/vision"
+arch="all"
+license="BSD-3-Clause"
+depends="
+	py3-torch
+	py3-numpy
+	py3-pillow
+	py3-requests
+	"
+makedepends="
+	cmake
+	libjpeg-turbo-dev
+	libpng-dev
+	py3-ninja
+	py3-setuptools
+	py3-typing-extensions
+	py3-torch-dev
+	python3-dev
+	pythonispython3
+	"
+checkdepends=""
+install=""
+subpackages=""
+source="
+	$pkgname-v$pkgver.tar.gz::https://github.com/pytorch/vision/archive/refs/tags/v$pkgver.tar.gz
+	"
+builddir="$srcdir/vision-$pkgver"
+
+build() {
+	python3 setup.py build -j ${JOBS:-2}
+}
+
+package() {
+	python3 setup.py install --prefix=/usr --root="$pkgdir"
+	install -D -m 644 LICENSE \
+		"$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}
+
+sha512sums="
+219e787cd04632f480120d6ff74d092f6804beb9543dbc9fc9be6cc0dd0c7271bb91508a2183c11f2faf6365e73ed16c2501dc6f6e7cb49f61deb6ce44476e70  $pkgname-v0.13.1.tar.gz
+"

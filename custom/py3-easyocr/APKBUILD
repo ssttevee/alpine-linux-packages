@@ -1,0 +1,69 @@
+# Contributor:
+# Maintainer:
+pkgname=py3-easyocr
+pkgver=1.6.2
+pkgrel=0
+pkgdesc="End-to-End Multi-Lingual Optical Character Recognition (OCR) Solution"
+url="https://github.com/pytorch/vision"
+arch="noarch"
+license="BSD-3-Clause"
+linguas="
+    ab ady af am ar az be bg bn bs ch
+    cs cy da de en es et fa fr ga ge
+    gre he hi hr hu id is it ja kn ko
+    ku la lt lv mi ml mn mr ms mt my
+    ne nl no oc or pb pi pl pt ro rs
+    ru sh sk sl sq sv sw ta te th ti
+    tjk tl tr ug uk ur uz vi
+    "
+depends="
+	py3-opencv
+	py3-packaging
+	py3-python-bidi
+	py3-scikit-image
+	py3-scipy
+	py3-tifffile
+	py3-torchvision
+	py3-yaml
+	python3
+	"
+makedepends="
+	cmake
+	cython
+	geos-dev
+	py3-numpy-dev
+	py3-pip
+	py3-setuptools
+	py3-shapely
+	py3-torch-dev
+	py3-typing-extensions
+	py3-wheel
+	python3-dev
+	"
+checkdepends=""
+install=""
+subpackages=""
+source="
+	$pkgname-v$pkgver.tar.gz::https://github.com/JaidedAI/EasyOCR/archive/refs/tags/v$pkgver.tar.gz
+	"
+builddir="$srcdir/EasyOCR-$pkgver"
+
+build() {
+	python3 setup.py build_ext -j ${JOBS:-2}
+}
+
+package() {
+	python3 setup.py install --prefix=/usr --root="$pkgdir"
+	install -D -m 644 LICENSE \
+		"$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}
+
+lang_subpkg() {
+    subpkgarch="noarch"
+    depends="py3-easyocr"
+    langdir=/usr/lib/python3.10/site-packages/easyocr/dict default_lang_subpkg
+}
+
+sha512sums="
+a92a3cb84f538330ef751c7606b10ffc324df62ac58a1b7dfc5bfd0447fb4d9d60722d7502184f0b1a66fa7283281f4ae40e3c37dd974ec90a5ae75008547aab  $pkgname-v1.6.2.tar.gz
+"

@@ -1,0 +1,17 @@
+--- a/setup.py
++++ b/setup.py
+@@ -243,7 +243,13 @@
+                 '/usr/include/openjpeg-2.5',
+             )
+         )
+-        EXTENSIONS['jpegxr']['include_dirs'].append('/usr/include/jxrlib')
++        EXTENSIONS['jpegxr']['include_dirs'].extend(
++            (
++                '/usr/include/libjxr/image',
++                '/usr/include/libjxr/common',
++                '/usr/include/libjxr/glue',
++            )
++        )
+         EXTENSIONS['zopfli']['include_dirs'].append('/usr/include/zopfli')
+ 
+ 

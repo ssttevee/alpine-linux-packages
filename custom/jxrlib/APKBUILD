@@ -1,0 +1,38 @@
+# Contributor: 
+# Maintainer: 
+pkgname=jxrlib
+pkgver=2019.10.9
+pkgrel=0
+pkgdesc="jxrlib is JPEG XR Image Codec reference implementation library"
+url="https://github.com/4creators/jxrlib"
+arch="all"
+license="BSD 2-Clause"
+depends=""
+depends_dev="$pkgname"
+checkdepends=""
+makedepends="
+	python3
+	pythonispython3
+	"
+subpackages="$pkgname-static $pkgname-dev $pkgname-doc"
+source="
+	$pkgname-$pkgver.tar.gz::https://github.com/4creators/$pkgname/archive/refs/tags/v$pkgver.tar.gz
+	makefile.patch
+	"
+builddir="$srcdir/$pkgname-$pkgver"
+
+build() {
+	make SHARED=1 -j ${JOBS:-2}
+}
+
+package() {
+    make DESTDIR="$pkgdir" DIR_INSTALL=/usr install
+    make SHARED=1 DESTDIR="$pkgdir" DIR_INSTALL=/usr install
+	install -D -m 644 LICENSE \
+		"$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}
+
+sha512sums="
+25d40df5fac9493fe664d9ad6516f63c5c59101ecd78053ff93ca8c778c9676cf8fb929eee2065be6872249055dc99f059e93b9ac2d3bb8efa6988a4bb670ec4  jxrlib-2019.10.9.tar.gz
+7fb72417ca6283b401ff7fcb8e8605bf23bb7bd324fa9eca168c0ab1fe17f1e5bb1cb776eaa94ae54bb435c6b1cd9466d31c9ebc3be75b3f9be742fa8e28a766  makefile.patch
+"

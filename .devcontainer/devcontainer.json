@@ -12,10 +12,18 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
+	"postCreateCommand": "sudo cp /home/vscode/.abuild/steve-5f397f18.rsa.pub /etc/apk/keys/; echo /home/vscode/packages/custom | sudo tee -a /etc/apk/repositories",
 
 	// Replace when using a ptrace-based debugger like C++, Go, and Rust
 	// "runArgs": [ "--init", "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+
+	"mounts": [
+		"source=${env:HOME}/.abuild,target=/home/vscode/.abuild,type=bind,consistency=cached",
+		"source=${env:HOME}/packages,target=/home/vscode/packages,type=bind,consistency=cached"
+	],
+
+	"workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/aports,type=bind,consistency=cached",
+	"workspaceFolder": "/home/vscode/aports",
 
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"

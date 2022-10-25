@@ -1,0 +1,32 @@
+--- a/Makefile
++++ b/Makefile
+@@ -199,17 +199,17 @@
+ 	@python -c 'import os; d = { "DIR_INSTALL": "$(DIR_INSTALL)", "JXR_VERSION": "$(JXR_VERSION)", "JXR_ENDIAN": "$(ENDIANFLAG)" }; fin = open("$<", "r"); fout = open("$@", "w+"); fout.writelines( [ l % d for l in fin.readlines()])'
+ 
+ install: all $(DIR_BUILD)/libjxr.pc
+-	install -d $(DIR_INSTALL)/lib/pkgconfig $(DIR_INSTALL)/bin $(DIR_INSTALL)/include/libjxr/common  $(DIR_INSTALL)/include/libjxr/image/x86 $(DIR_INSTALL)/include/libjxr/glue $(DIR_INSTALL)/include/libjxr/test $(DIR_INSTALL)/share/doc/jxr-$(JXR_VERSION)
+-	install $(LIBRARIES) $(DIR_INSTALL)/lib
+-	install -m 644 $(DIR_BUILD)/libjxr.pc $(DIR_INSTALL)/lib/pkgconfig
+-	install $(DIR_BUILD)/$(ENCAPP) $(DIR_BUILD)/$(DECAPP) $(DIR_INSTALL)/bin
+-	install -m 644 $(DIR_SRC)/common/include/*.h $(DIR_INSTALL)/include/libjxr/common
+-	install -m 644 $(DIR_SRC)/image/x86/*.h $(DIR_INSTALL)/include/libjxr/image/x86
+-	install -m 644 $(DIR_SRC)/$(DIR_SYS)/*.h $(DIR_INSTALL)/include/libjxr/image
+-	install -m 644 $(DIR_SRC)/$(DIR_ENC)/*.h $(DIR_INSTALL)/include/libjxr/image
+-	install -m 644 $(DIR_SRC)/$(DIR_DEC)/*.h $(DIR_INSTALL)/include/libjxr/image
+-	install -m 644 $(DIR_SRC)/$(DIR_GLUE)/*.h $(DIR_INSTALL)/include/libjxr/glue
+-	install -m 644 $(DIR_SRC)/$(DIR_TEST)/*.h $(DIR_INSTALL)/include/libjxr/test
+-	install -m 644 doc/* $(DIR_INSTALL)/share/doc/jxr-$(JXR_VERSION)
++	install -d $(DESTDIR)$(DIR_INSTALL)/lib/pkgconfig $(DESTDIR)$(DIR_INSTALL)/bin $(DESTDIR)$(DIR_INSTALL)/include/libjxr/common  $(DESTDIR)$(DIR_INSTALL)/include/libjxr/image/x86 $(DESTDIR)$(DIR_INSTALL)/include/libjxr/glue $(DESTDIR)$(DIR_INSTALL)/include/libjxr/test $(DESTDIR)$(DIR_INSTALL)/share/doc/jxr-$(JXR_VERSION)
++	install $(LIBRARIES) $(DESTDIR)$(DIR_INSTALL)/lib
++	install -m 644 $(DIR_BUILD)/libjxr.pc $(DESTDIR)$(DIR_INSTALL)/lib/pkgconfig
++	install $(DIR_BUILD)/$(ENCAPP) $(DIR_BUILD)/$(DECAPP) $(DESTDIR)$(DIR_INSTALL)/bin
++	install -m 644 $(DIR_SRC)/common/include/*.h $(DESTDIR)$(DIR_INSTALL)/include/libjxr/common
++	install -m 644 $(DIR_SRC)/image/x86/*.h $(DESTDIR)$(DIR_INSTALL)/include/libjxr/image/x86
++	install -m 644 $(DIR_SRC)/$(DIR_SYS)/*.h $(DESTDIR)$(DIR_INSTALL)/include/libjxr/image
++	install -m 644 $(DIR_SRC)/$(DIR_ENC)/*.h $(DESTDIR)$(DIR_INSTALL)/include/libjxr/image
++	install -m 644 $(DIR_SRC)/$(DIR_DEC)/*.h $(DESTDIR)$(DIR_INSTALL)/include/libjxr/image
++	install -m 644 $(DIR_SRC)/$(DIR_GLUE)/*.h $(DESTDIR)$(DIR_INSTALL)/include/libjxr/glue
++	install -m 644 $(DIR_SRC)/$(DIR_TEST)/*.h $(DESTDIR)$(DIR_INSTALL)/include/libjxr/test
++	install -m 644 doc/* $(DESTDIR)$(DIR_INSTALL)/share/doc/jxr-$(JXR_VERSION)
+ 
+ ##
