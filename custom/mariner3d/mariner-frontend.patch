@@ -1,0 +1,29 @@
+--- a/opt/venvs/mariner3d/lib/python3.7/site-packages/mariner/server/app.py
++++ b/opt/venvs/mariner3d/lib/python3.7/site-packages/mariner/server/app.py
+@@ -11,6 +11,7 @@ from mariner import config
+ 
+ def get_frontend_assets_path() -> str:
+     potential_paths: Sequence[Path] = [
++        Path(os.path.join(os.path.dirname(__file__), "../frontend/dist/")),
+         Path("./frontend/dist/"),
+         Path("/opt/venvs/mariner3d/dist/"),
+     ]
+--- a/opt/venvs/mariner3d/bin/mariner
++++ b/opt/venvs/mariner3d/bin/mariner
+@@ -1,4 +1,4 @@
+-#!/opt/venvs/mariner3d/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import re
+ import sys
+--- a/opt/venvs/mariner3d/lib/python3.7/site-packages/mariner/mars.py
++++ b/opt/venvs/mariner3d/lib/python3.7/site-packages/mariner/mars.py
+@@ -40,7 +40,7 @@
+         return match
+
+     def open(self) -> None:
+-        self._serial_port.port = "/dev/serial0"
++        self._serial_port.port = "/dev/ttyAMA0"
+         self._serial_port.open()
+
+     def close(self) -> None:
