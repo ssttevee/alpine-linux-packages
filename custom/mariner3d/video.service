@@ -1,0 +1,12 @@
+#!/sbin/openrc-run
+
+name=$RC_SVCNAME
+cfgfile="/etc/$RC_SVCNAME/config.toml"
+command="/usr/bin/python3"
+command_args="/usr/lib/python3.11/site-packages/mariner/server/video.py"
+pidfile="/run/$RC_SVCNAME.pid"
+command_background="yes"
+
+depend() {
+        need net
+}

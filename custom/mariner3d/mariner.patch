@@ -1,0 +1,107 @@
+--- a/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/file_formats/ctb_encrypted.py
++++ b/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/file_formats/ctb_encrypted.py
+@@ -244,19 +244,13 @@
+                 raise TypeError("The file checksum does not match, malformed file.\n" + str(hash) + "\n" + str(encrypted_hash) + "\n" + str(int.from_bytes(hash, 'little')) + "\n" + str(int.from_bytes(encrypted_hash, 'little')) + "\n" + str(int.from_bytes(checksum_hash, 'little')))
+ 
+             LayersPointer = [None] * ctb_slicer.layer_count
++            file.seek(ctb_slicer.layer_table_offset)
+             for layer_index in range(0, ctb_slicer.layer_count):
+-                file.seek(ctb_slicer.layer_table_offset)
+                 LayersPointer[layer_index] = CTBLayerPointer.unpack(file.read(CTBLayerPointer.get_size()))
+ 
+             LayersDefinition = [None] * ctb_slicer.layer_count
+             buggy_layers = []
+-            end_byte_offset_by_layer = []
+-            for layer in range(0, ctb_slicer.layer_count):
+-                file.seek(LayersPointer[layer].layer_offset)
+-                LayersDefinition[layer] = CTBEncryptedLayerDef.unpack(file.read(CTBEncryptedLayerDef.get_size()))
+-                end_byte_offset_by_layer.append(
+-                    LayersDefinition[layer].encrypted_data_offset + LayersDefinition[layer].encrypted_data_length
+-                )
++            end_byte_offset_by_layer = [layer_pointer.layer_offset for layer_pointer in LayersPointer]
+     
+             return CTBEncryptedFile(
+                 filename=path.name,
+--- a/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/server/api.py
++++ b/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/server/api.py
+@@ -73,20 +73,39 @@
+             )
+
+             if print_status.current_byte == 0:
+-                current_layer = 1
++                current_layer = 0
+             else:
+-                current_layer = (
+-                    sliced_model_file.end_byte_offset_by_layer.index(
+-                        print_status.current_byte
+-                    )
+-                    + 1
+-                )
++                try:
++                    if print_status.current_byte in sliced_model_file.end_byte_offset_by_layer:
++                        current_layer = (
++                            sliced_model_file.end_byte_offset_by_layer.index(
++                                print_status.current_byte
++                            )
++                        )
++                    else:
++                       index = next(i for i, x in enumerate(sliced_model_file.end_byte_offset_by_layer) if x < print_status.current_byte)
++                       if index + 1 == len(sliced_model_file.end_byte_offset_by_layer):
++                           current_layer = index
++                       else:
++                           current_layer = index if sliced_model_file.end_byte_offset_by_layer[index] - print_status.current_byte < print_status.current_byte - sliced_model_file.end_byte_offset_by_layer[index + 1] else index + 1
++                except Exception:
++                    current_layer = 0
+
+-            progress = (
+-                100.0
+-                * none_throws(current_layer - 1)
+-                / none_throws(sliced_model_file.layer_count)
+-            )
++                if current_layer == 0:
++                    current_layer = f'~{sliced_model_file.layer_count*print_status.current_byte//print_status.total_bytes}'
++
++            if isinstance(current_layer, str):
++                progress = (
++                    100.0
++                    * none_throws(print_status.current_byte)
++                    / none_throws(print_status.total_bytes)
++                )
++            else:
++                progress = (
++                    100.0
++                    * none_throws(current_layer)
++                    / none_throws(sliced_model_file.layer_count)
++                )
+
+             print_details = {
+                 "current_layer": current_layer,
+--- a/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/server/app.py
++++ b/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/server/app.py
+@@ -11,6 +11,7 @@ from mariner import config
+ 
+ def get_frontend_assets_path() -> str:
+     potential_paths: Sequence[Path] = [
++        Path(os.path.join(os.path.dirname(__file__), "../frontend/dist/")),
+         Path("./frontend/dist/"),
+         Path("/opt/venvs/mariner3d/dist/"),
+     ]
+--- a/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/server/utils.py
++++ b/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner/server/utils.py
+@@ -15,7 +15,7 @@
+ cache = Cache(app)
+ 
+ 
+-@cache.memoize(timeout=0)
++#@cache.memoize(timeout=0)
+ def read_cached_sliced_model_file(filename: str) -> SlicedModelFile:
+     assert os.path.isabs(filename)
+     assert os.path.isfile(filename)
+--- a/opt/venvs/mariner3d/bin/mariner
++++ b/opt/venvs/mariner3d/bin/mariner
+@@ -1,4 +1,4 @@
+-#!/opt/venvs/mariner3d/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import re
+ import sys

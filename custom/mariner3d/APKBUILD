@@ -1,8 +1,8 @@
 # Contributor:
 # Maintainer:
 pkgname=mariner3d
-pkgver=0.2.0
-pkgrel=1
+pkgver=0.4.0
+pkgrel=0
 pkgdesc="Web interface for controlling MSLA 3D Printers based on Chitu controllers, such as the ones by Elegoo and Phrozen."
 url="https://github.com/luizribeiro/mariner"
 arch="noarch"
@@ -26,17 +26,17 @@ depends="
 	py3-typedstruct
 	py3-pyre-extensions
 	py3-whitenoise
+	py3-numpy
+	py3-pycryptodome
 "
 makedepends="xz"
 install=""
-subpackages="mariner3d-pyc"
-# source="
-# $_pkgreal-3e793cf9067b52f2f1b68c84fa8a887bbc75626e.tar.gz::https://github.com/luizribeiro/mariner/archive/3e793cf9067b52f2f1b68c84fa8a887bbc75626e.tar.gz
-# mariner-frontend.patch
-# "
+subpackages="$pkgname-pyc $pkgname-openrc"
 source="
-https://github.com/luizribeiro/mariner/releases/download/v${pkgver}-${pkgrel}/${pkgname}_${pkgver}-${pkgrel}_armhf.deb
-mariner-frontend.patch
+https://github.com/mnbf9rca/mariner/releases/download/v${pkgver}/${pkgname}_${pkgver}_armhf.deb
+main.service
+video.service
+mariner.patch
 "
 builddir="$srcdir/$pkgname-$pkgver-$pkgrel"
 options="!check"
@@ -49,15 +49,22 @@ unpack() {
 
 package() {
 	mkdir -p "$pkgdir/usr/bin"
-	cp "$builddir/opt/venvs/mariner3d/bin/mariner" "$pkgdir/usr/bin/"
+	install "$builddir/opt/venvs/mariner3d/bin/mariner" "$pkgdir/usr/bin/mariner"
+	mkdir -p "$pkgdir/etc/mariner"
+	cp "$builddir/etc/mariner/config.toml" "$pkgdir/etc/mariner/"
 	sitepkgs=$pkgdir`python3 -c "import site; print(site.getsitepackages()[0])"`
 	frontenddir=$sitepkgs/mariner/frontend
 	mkdir -p "$frontenddir"
-	cp -r "$builddir/opt/venvs/mariner3d/lib/python3.7/site-packages/mariner"* "$sitepkgs/"
+	cp -r "$builddir/opt/venvs/mariner3d/lib/python3.9/site-packages/mariner"* "$sitepkgs/"
 	cp -r "$builddir/opt/venvs/mariner3d/dist" "$frontenddir/"
+	mkdir -p "$pkgdir/etc/init.d"
+	install "$srcdir/main.service" "$pkgdir/etc/init.d/mariner3d"
+	install "$srcdir/video.service" "$pkgdir/etc/init.d/marinervideo"
 }
 
 sha512sums="
-895575acd9ee59919a6ace6a33b9d80778c72a026764b006a5ad5abaa15cc06e4e5468f1d938c7561cc4c6dc7f566ea70cd636915c4ad23957ae65cabedf4a08  mariner3d_0.2.0-1_armhf.deb
-c8e0b85161993e6224eaf8d58a9d38876695523f1c237ae91abef0c811e3dc531e82ed565f54f761137d1db02233a1b811971ef6602479dfa7fbd4705c4c559e  mariner-frontend.patch
+a2aaa92ee84303c8521993dab4d4b3fd2e9f57e904c5cd24753486245d887701f8af13594e9549382d75f0900f4cf4f8e433136d15d6ca4ea7083ec30701496b  mariner3d_0.4.0_armhf.deb
+003b0b2c522313019d7647c4d7e85f703e39cf896519c4644fe563e525d28acf7210a01276c4bc6876952917ad07ed7ca0d8088799de29f792844dcba0016af6  main.service
+d01de946293c3b3c444d57d176b804abdf0c687f6095c155432f29c20d831e6fd8c825c6c380003e19c376b19d148c52dba4cc72dc5a1d0a63347ab6d54e5956  video.service
+1100c5bded13f31a75813c211744cd3ce3f1c14de2dc02d899672b460d45862db1ee07d9418dd24277faefe740c2c5a2ecea2abd890c6c97046759d7a344b4ab  mariner.patch
 "
