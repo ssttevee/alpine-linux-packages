@@ -1,13 +1,15 @@
 set -ex
 
-KEY_DIR=.abuild
+SCRIPT_DIR=$(dirname $(realpath $0))
+KEY_DIR=$SCRIPT_DIR/.abuild
 KEY_FILE=$(basename "$(find "$KEY_DIR" -name '*.rsa' | head -n1)")
 CT_NAME=apkbuild
 ALPINE_VERSION=3.19
 REPO=custom
 PACKAGE=hailort
 
-docker run --name "$CT_NAME" -v "$(dirname $(realpath $0)):/opt" -w /opt -dt "alpine:$ALPINE_VERSION"
+mkdir -p "$SCRIPT_DIR/packages"
+docker run --name "$CT_NAME" -v "$SCRIPT_DIR:$SCRIPT_DIR" -v "$SCRIPT_DIR/packages:/root/packages" -w "$SCRIPT_DIR" -dt "alpine:$ALPINE_VERSION"
 trap 'docker rm -f "$CT_NAME"' EXIT
 
 docker exec "$CT_NAME" mkdir -p /root/.abuild
@@ -19,5 +21,5 @@ docker exec "$CT_NAME" apk add alpine-sdk
 
 docker exec \
     -e PACKAGER_PRIVKEY="/root/.abuild/$KEY_FILE" \
-    -w "/opt/$REPO/$PACKAGE" "$CT_NAME" \
-    abuild -r -F
+    -w "$SCRIPT_DIR/$REPO/$PACKAGE" "$CT_NAME" \
+    abuild -F -r

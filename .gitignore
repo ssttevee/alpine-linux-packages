@@ -3,3 +3,4 @@
 *.bak
 /.abuild
 .DS_Store
+/packages

@@ -1,0 +1,488 @@
+
+diff -Nurp a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2024-05-16 09:11:22
++++ b/CMakeLists.txt	2024-07-02 23:30:29
+@@ -18,6 +18,8 @@ endif()
+     In order to build, please create a new `build` directory and run `cmake ..` from there.")
+ endif()
+ 
++add_compile_definitions(SPDLOG_FMT_EXTERNAL)
++
+ # Set compiler flags in HAILORT_COMPILE_OPTIONS
+ # TODO: Change HAILORT_COMPILE_OPTIONS to add_compile_options
+ if(WIN32)
+diff -Nurp a/hailort/cmake/external/benchmark.cmake b/hailort/cmake/external/benchmark.cmake
+--- a/hailort/cmake/external/benchmark.cmake	2024-05-16 09:11:22
++++ b/hailort/cmake/external/benchmark.cmake	2024-07-02 23:30:29
+@@ -1,25 +1,3 @@ cmake_minimum_required(VERSION 3.11.0)
+ cmake_minimum_required(VERSION 3.11.0)
+ 
+-include(FetchContent)
+-
+-# BENCHMARK_ENABLE_TESTING can be used by other 3rd party projects, therefore we define it
+-# before adding projects
+-set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Enable testing of the benchmark library.")
+-
+-FetchContent_Declare(
+-    benchmark
+-    GIT_REPOSITORY https://github.com/google/benchmark.git 
+-    GIT_TAG f91b6b42b1b9854772a90ae9501464a161707d1e # Version 1.6.0
+-    GIT_SHALLOW TRUE
+-    SOURCE_DIR ${HAILO_EXTERNAL_DIR}/benchmark-src
+-    SUBBUILD_DIR ${HAILO_EXTERNAL_DIR}/benchmark-subbuild
+-)
+-
+-# https://stackoverflow.com/questions/65527126/disable-install-for-fetchcontent
+-FetchContent_GetProperties(benchmark)
+-if(NOT benchmark_POPULATED)
+-    FetchContent_Populate(benchmark)
+-    if (NOT HAILO_EXTERNALS_EXCLUDE_TARGETS)
+-        add_subdirectory(${benchmark_SOURCE_DIR} ${benchmark_BINARY_DIR} EXCLUDE_FROM_ALL)
+-    endif()
+-endif()
+\ No newline at end of file
++find_package(benchmark REQUIRED)
+diff -Nurp a/hailort/cmake/external/eigen.cmake b/hailort/cmake/external/eigen.cmake
+--- a/hailort/cmake/external/eigen.cmake	2024-05-16 09:11:22
++++ b/hailort/cmake/external/eigen.cmake	2024-07-02 23:30:29
+@@ -1,28 +1,3 @@ cmake_minimum_required(VERSION 3.11.0)
+ cmake_minimum_required(VERSION 3.11.0)
+ 
+-include(FetchContent)
+-
+-FetchContent_Declare(
+-    eigen
+-    GIT_REPOSITORY https://gitlab.com/libeigen/eigen
+-    GIT_TAG 3147391d946bb4b6c68edd901f2add6ac1f31f8c # Version 3.4.0
+-    GIT_SHALLOW TRUE
+-    SOURCE_DIR ${HAILO_EXTERNAL_DIR}/eigen-src
+-    SUBBUILD_DIR ${HAILO_EXTERNAL_DIR}/eigen-subbuild
+-)
+-
+-
+-# https://stackoverflow.com/questions/65527126/disable-install-for-fetchcontent
+-FetchContent_GetProperties(eigen)
+-if(NOT eigen_POPULATED)
+-    FetchContent_Populate(eigen)
+-    option(EIGEN_BUILD_DOC OFF)
+-    option(BUILD_TESTING OFF)
+-    option(EIGEN_LEAVE_TEST_IN_ALL_TARGET OFF)
+-    option(EIGEN_BUILD_PKGCONFIG OFF)
+-    option(CMAKE_Fortran_COMPILER OFF)
+-
+-    if (NOT HAILO_EXTERNALS_EXCLUDE_TARGETS)
+-        add_subdirectory(${eigen_SOURCE_DIR} ${eigen_BINARY_DIR} EXCLUDE_FROM_ALL)
+-    endif()
+-endif()
+\ No newline at end of file
++find_package(Eigen3 REQUIRED)
+diff -Nurp a/hailort/cmake/external/grpc.cmake b/hailort/cmake/external/grpc.cmake
+--- a/hailort/cmake/external/grpc.cmake	2024-05-16 09:11:22
++++ b/hailort/cmake/external/grpc.cmake	2024-07-02 23:30:29
+@@ -1,50 +1,3 @@ cmake_minimum_required(VERSION 3.11.0)
+ cmake_minimum_required(VERSION 3.11.0)
+ 
+-include(${CMAKE_CURRENT_LIST_DIR}/protobuf.cmake)
+-include(FetchContent)
+-
+-FetchContent_Declare(
+-    grpc
+-    GIT_REPOSITORY  https://github.com/grpc/grpc
+-    GIT_TAG         53d69cc581c5b7305708587f4f1939278477c28a # v1.46.3
+-    GIT_SHALLOW     TRUE
+-    SOURCE_DIR      ${HAILO_EXTERNAL_DIR}/grpc-src
+-    SUBBUILD_DIR    ${HAILO_EXTERNAL_DIR}/grpc-subbuild
+-)
+-
+-FetchContent_GetProperties(grpc)
+-if(NOT grpc_POPULATED)
+-    FetchContent_Populate(grpc)
+-    if (NOT HAILO_EXTERNALS_EXCLUDE_TARGETS)
+-        message(STATUS "Building grpc...")
+-        include(${CMAKE_CURRENT_LIST_DIR}/../execute_cmake.cmake)
+-        set(TOOL_BUILD_TYPE "Release")
+-        execute_cmake(
+-            SOURCE_DIR ${HAILO_EXTERNAL_DIR}/grpc-src
+-            BUILD_DIR ${HAILO_EXTERNAL_DIR}/grpc-build
+-            CONFIGURE_ARGS
+-                -DCMAKE_BUILD_TYPE=${TOOL_BUILD_TYPE}
+-        
+-                -DgRPC_BUILD_TESTS:BOOL=OFF
+-                # TODO: check flag on Windows
+-                # -DgRPC_BUILD_MSVC_MP_COUNT:STRING=-1
+-                -DgRPC_PROTOBUF_PROVIDER:STRING=package
+-                -DgRPC_PROTOBUF_PACKAGE_TYPE:STRING=CONFIG
+-                -DProtobuf_DIR:PATH=${PROTOBUF_CONFIG_DIR}
+-            BUILD_ARGS
+-                --config ${TOOL_BUILD_TYPE} --target grpc_cpp_plugin ${CMAKE_EXTRA_BUILD_ARGS}
+-            PARALLEL_BUILD
+-        )
+-        
+-        if(HAILO_BUILD_SERVICE)
+-            # TODO: go over BUILD_TESTING vs gRPC_BUILD_TESTS. what about avoiding the hack the same way we did for grpc_cpp_plugin?
+-            set(BUILD_TESTING OFF) # disabe abseil tests
+-            set(gRPC_ZLIB_PROVIDER "module" CACHE STRING "Provider of zlib library")
+-            # The following is an awful hack needed in order to force grpc to use our libprotobuf+liborotoc targets
+-            # ('formal' options are to let grpc recompile it which causes a name conflict,
+-            # or let it use find_package and take the risk it will use a different installed lib)
+-            set(gRPC_PROTOBUF_PROVIDER "hack" CACHE STRING "Provider of protobuf library")
+-            add_subdirectory(${grpc_SOURCE_DIR} ${grpc_BINARY_DIR} EXCLUDE_FROM_ALL)
+-        endif()
+-    endif()
+-endif()
+\ No newline at end of file
++find_package(grpc REQUIRED)
+diff -Nurp a/hailort/cmake/external/json.cmake b/hailort/cmake/external/json.cmake
+--- a/hailort/cmake/external/json.cmake	2024-05-16 09:11:22
++++ b/hailort/cmake/external/json.cmake	2024-07-02 23:30:29
+@@ -1,21 +1,3 @@ cmake_minimum_required(VERSION 3.11.0)
+ cmake_minimum_required(VERSION 3.11.0)
+ 
+-include(FetchContent)
+-
+-FetchContent_Declare(
+-    json
+-    GIT_REPOSITORY https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent.git
+-    GIT_TAG 391786c6c3abdd3eeb993a3154f1f2a4cfe137a0 # Version 3.9.1
+-    GIT_SHALLOW TRUE
+-    SOURCE_DIR ${HAILO_EXTERNAL_DIR}/json-src
+-    SUBBUILD_DIR ${HAILO_EXTERNAL_DIR}/json-subbuild
+-)
+-
+-# https://stackoverflow.com/questions/65527126/disable-install-for-fetchcontent
+-FetchContent_GetProperties(json)
+-if(NOT json_POPULATED)
+-    FetchContent_Populate(json)
+-    if (NOT HAILO_EXTERNALS_EXCLUDE_TARGETS)
+-        add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
+-    endif()
+-endif()
+\ No newline at end of file
++find_package(nlohmann_json REQUIRED)
+diff -Nurp a/hailort/cmake/external/protobuf.cmake b/hailort/cmake/external/protobuf.cmake
+--- a/hailort/cmake/external/protobuf.cmake	2024-05-16 09:11:22
++++ b/hailort/cmake/external/protobuf.cmake	2024-07-02 23:30:29
+@@ -1,65 +1,8 @@ cmake_minimum_required(VERSION 3.11.0)
+ cmake_minimum_required(VERSION 3.11.0)
+ 
+-include(FetchContent)
+-
+-# TODO: support cross generators - https://gitlab.kitware.com/cmake/cmake/-/issues/20536
+-FetchContent_Declare(
+-    protobuf
+-    GIT_REPOSITORY  https://github.com/protocolbuffers/protobuf.git
+-    GIT_TAG         f0dc78d7e6e331b8c6bb2d5283e06aa26883ca7c # v21.12
+-    GIT_SHALLOW     TRUE
+-    SOURCE_DIR      ${HAILO_EXTERNAL_DIR}/protobuf-src
+-    SUBBUILD_DIR    ${HAILO_EXTERNAL_DIR}/protobuf-subbuild
+-)
+-
+-FetchContent_GetProperties(protobuf)
+-if(NOT protobuf_POPULATED)
+-    FetchContent_Populate(protobuf)
+-    if (NOT HAILO_EXTERNALS_EXCLUDE_TARGETS)
+-        message(STATUS "Building protobuf::protoc...")
+-        include(${CMAKE_CURRENT_LIST_DIR}/../execute_cmake.cmake)
+-        set(TOOL_BUILD_TYPE "Release")
+-        set(PROTOBUF_INSTALL_DIR ${HAILO_EXTERNAL_DIR}/protobuf-install)
+-
+-        execute_cmake(
+-            SOURCE_DIR ${HAILO_EXTERNAL_DIR}/protobuf-src
+-            BUILD_DIR ${HAILO_EXTERNAL_DIR}/protobuf-build
+-            CONFIGURE_ARGS
+-                -DCMAKE_BUILD_TYPE=${TOOL_BUILD_TYPE}
+-                -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+-
+-                -Dprotobuf_BUILD_TESTS:BOOL=OFF
+-                -Dprotobuf_WITH_ZLIB:BOOL=OFF
+-                -Dprotobuf_MSVC_STATIC_RUNTIME:BOOL=OFF
+-            BUILD_ARGS
+-                # NOTE: We are installing instead of building protoc because "hailort\external\protobuf-build\cmake\protobuf-targets.cmake" (in Windows) is based on config type.
+-                # TODO: consider importing protobuf_generate_cpp instead? will it solve it?
+-                --config ${TOOL_BUILD_TYPE} --target install ${CMAKE_EXTRA_BUILD_ARGS}
+-            PARALLEL_BUILD
+-        )
+-
+-        if(WIN32)
+-            set(PROTOBUF_CONFIG_DIR ${PROTOBUF_INSTALL_DIR}/cmake)
+-        else()
+-            set(PROTOBUF_CONFIG_DIR ${PROTOBUF_INSTALL_DIR}/lib/cmake/protobuf)
+-        endif()
+-
+-        # Include host protobuf for protoc (https://stackoverflow.com/questions/53651181/cmake-find-protobuf-package-in-custom-directory)
+-        include(${PROTOBUF_CONFIG_DIR}/protobuf-config.cmake)
+-        include(${PROTOBUF_CONFIG_DIR}/protobuf-module.cmake)
+-
+-        set(protobuf_BUILD_TESTS OFF CACHE BOOL "Build protobuf tests" FORCE)
+-        set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE BOOL "Build libprotoc and protoc compiler" FORCE)
+-        set(protobuf_MSVC_STATIC_RUNTIME OFF CACHE BOOL "Protobuf MSVC static runtime" FORCE)
+-        set(protobuf_WITH_ZLIB OFF CACHE BOOL "Compile protobuf with zlib" FORCE)
+-        add_subdirectory(${protobuf_SOURCE_DIR} ${protobuf_BINARY_DIR} EXCLUDE_FROM_ALL)
+-
+-        if(NOT MSVC)
+-            set_target_properties(libprotobuf PROPERTIES POSITION_INDEPENDENT_CODE ON)
+-            set_target_properties(libprotobuf-lite PROPERTIES POSITION_INDEPENDENT_CODE ON)
+-        endif()
+-    endif()
+-endif()
++find_package(Protobuf REQUIRED)
++include_directories(${Protobuf_INCLUDE_DIRS})
++include_directories(${CMAKE_CURRENT_BINARY_DIR})
+ 
+ 
+ 
+diff -Nurp a/hailort/cmake/external/pybind11.cmake b/hailort/cmake/external/pybind11.cmake
+--- a/hailort/cmake/external/pybind11.cmake	2024-05-16 09:11:22
++++ b/hailort/cmake/external/pybind11.cmake	2024-07-02 23:30:29
+@@ -1,32 +1,3 @@ cmake_minimum_required(VERSION 3.11.0)
+ cmake_minimum_required(VERSION 3.11.0)
+ 
+-include(FetchContent)
+-
+-FetchContent_Declare(
+-    pybind11
+-    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+-    GIT_TAG 80dc998efced8ceb2be59756668a7e90e8bef917 # Version 2.10.1
+-    GIT_SHALLOW TRUE
+-    SOURCE_DIR ${HAILO_EXTERNAL_DIR}/pybind11-src
+-    SUBBUILD_DIR ${HAILO_EXTERNAL_DIR}/pybind11-subbuild
+-)
+-
+-# https://stackoverflow.com/questions/65527126/disable-install-for-fetchcontent
+-FetchContent_GetProperties(pybind11)
+-if(NOT pybind11_POPULATED)
+-    FetchContent_Populate(pybind11)
+-    if (NOT HAILO_EXTERNALS_EXCLUDE_TARGETS)
+-        if(NOT PYTHON_EXECUTABLE AND PYBIND11_PYTHON_VERSION)
+-            # venv version is prioritized (instead of PYBIND11_PYTHON_VERSION) if PYTHON_EXECUTABLE is not set.
+-            # See https://pybind11.readthedocs.io/en/stable/changelog.html#v2-6-0-oct-21-2020
+-            if((${CMAKE_VERSION} VERSION_LESS "3.22.0") AND (NOT WIN32))
+-                find_package(PythonInterp ${PYBIND11_PYTHON_VERSION} REQUIRED)
+-                set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+-            else()
+-                find_package(Python3 ${PYBIND11_PYTHON_VERSION} REQUIRED EXACT COMPONENTS Interpreter Development)
+-                set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+-            endif()
+-        endif()
+-        add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR} EXCLUDE_FROM_ALL)
+-    endif()
+-endif()
+\ No newline at end of file
++find_package(pybind11 REQUIRED)
+diff -Nurp a/hailort/cmake/external/spdlog.cmake b/hailort/cmake/external/spdlog.cmake
+--- a/hailort/cmake/external/spdlog.cmake	2024-05-16 09:11:22
++++ b/hailort/cmake/external/spdlog.cmake	2024-07-02 23:30:29
+@@ -1,22 +1,3 @@ cmake_minimum_required(VERSION 3.11.0)
+ cmake_minimum_required(VERSION 3.11.0)
+ 
+-include(FetchContent)
+-
+-FetchContent_Declare(
+-    spdlog
+-    GIT_REPOSITORY https://github.com/gabime/spdlog
+-    GIT_TAG 22a169bc319ac06948e7ee0be6b9b0ac81386604
+-    GIT_SHALLOW TRUE
+-    SOURCE_DIR ${HAILO_EXTERNAL_DIR}/spdlog-src
+-    SUBBUILD_DIR ${HAILO_EXTERNAL_DIR}/spdlog-subbuild
+-)
+-
+-# https://stackoverflow.com/questions/65527126/disable-install-for-fetchcontent
+-FetchContent_GetProperties(spdlog)
+-if(NOT spdlog_POPULATED)
+-    FetchContent_Populate(spdlog)
+-    if (NOT HAILO_EXTERNALS_EXCLUDE_TARGETS)
+-        add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL)
+-        set_target_properties(spdlog PROPERTIES POSITION_INDEPENDENT_CODE ON)
+-    endif()
+-endif()
++find_package(spdlog REQUIRED)
+diff -Nurp a/hailort/hailortcli/CMakeLists.txt b/hailort/hailortcli/CMakeLists.txt
+--- a/hailort/hailortcli/CMakeLists.txt	2024-05-16 09:11:22
++++ b/hailort/hailortcli/CMakeLists.txt	2024-07-02 23:30:29
+@@ -64,18 +64,21 @@ target_compile_options(hailortcli PRIVATE ${HAILORT_CO
+ )
+ 
+ target_compile_options(hailortcli PRIVATE ${HAILORT_COMPILE_OPTIONS})
+-set_property(TARGET hailortcli PROPERTY CXX_STANDARD 14)
++set_property(TARGET hailortcli PROPERTY CXX_STANDARD 17)
+ set_property(TARGET hailortcli PROPERTY INSTALL_RPATH "$ORIGIN" "../lib/") # Link with a relative libhailort
++
+ target_link_libraries(hailortcli
+     libhailort
+     CLI11::CLI11
+     nlohmann_json
+     spdlog::spdlog
+     readerwriterqueue
+-    eigen
+     DotWriter
+     scheduler_mon_proto
+-    profiler_proto)
++    profiler_proto
++    absl_log_internal_check_op
++    absl_log_internal_message
++    )
+ 
+ if(WIN32)
+     target_link_libraries(hailortcli Ws2_32 Iphlpapi Shlwapi winmm.lib)
+diff -Nurp a/hailort/libhailort/CMakeLists.txt b/hailort/libhailort/CMakeLists.txt
+--- a/hailort/libhailort/CMakeLists.txt	2024-05-16 09:11:22
++++ b/hailort/libhailort/CMakeLists.txt	2024-07-02 23:30:29
+@@ -13,8 +13,8 @@ add_library(hef_proto ${PROTO_HEF_SRC} ${PROTO_HEF_HEA
+ protobuf_generate_python(PROTO_HEF_PY hef.proto) # TODO (HRT-12504): Copy hef_pb2.py to tools directory
+ 
+ add_library(hef_proto ${PROTO_HEF_SRC} ${PROTO_HEF_HEADER} ${PROTO_HEF_PY})
+-target_link_libraries(hef_proto libprotobuf-lite)
+-set_target_properties(hef_proto PROPERTIES CXX_STANDARD 14 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
++target_link_libraries(hef_proto protobuf-lite)
++set_target_properties(hef_proto PROPERTIES CXX_STANDARD 17 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
+ if(CMAKE_HOST_WIN32)
+     # https://github.com/protocolbuffers/protobuf/tree/master/cmake#notes-on-compiler-warnings
+     target_compile_options(hef_proto PRIVATE /wd4244)
+@@ -32,8 +32,8 @@ add_library(scheduler_mon_proto ${PROTO_SCHEDULER_MON_
+ 
+ protobuf_generate_cpp(PROTO_SCHEDULER_MON_SRC PROTO_SCHEDULER_MON_HEADR scheduler_mon.proto)
+ add_library(scheduler_mon_proto ${PROTO_SCHEDULER_MON_SRC} ${PROTO_SCHEDULER_MON_HEADR})
+-target_link_libraries(scheduler_mon_proto libprotobuf-lite)
+-set_target_properties(scheduler_mon_proto PROPERTIES CXX_STANDARD 14 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
++target_link_libraries(scheduler_mon_proto protobuf-lite)
++set_target_properties(scheduler_mon_proto PROPERTIES CXX_STANDARD 17 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
+ if(CMAKE_HOST_WIN32)
+     target_compile_options(scheduler_mon_proto PRIVATE /wd4244)
+ endif()
+@@ -46,8 +46,8 @@ add_library(profiler_proto ${PROTO_PROFILER_SRC} ${PRO
+ 
+ protobuf_generate_cpp(PROTO_PROFILER_SRC PROTO_PROFILER_HEADR tracer_profiler.proto)
+ add_library(profiler_proto ${PROTO_PROFILER_SRC} ${PROTO_PROFILER_HEADR})
+-target_link_libraries(profiler_proto libprotobuf-lite)
+-set_target_properties(profiler_proto PROPERTIES CXX_STANDARD 14 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
++target_link_libraries(profiler_proto protobuf-lite)
++set_target_properties(profiler_proto PROPERTIES CXX_STANDARD 17 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
+ if(CMAKE_HOST_WIN32)
+     target_compile_options(profiler_proto PRIVATE /wd4244)
+ endif()
+diff -Nurp a/hailort/libhailort/bindings/gstreamer/CMakeLists.txt b/hailort/libhailort/bindings/gstreamer/CMakeLists.txt
+--- a/hailort/libhailort/bindings/gstreamer/CMakeLists.txt	2024-05-16 09:11:22
++++ b/hailort/libhailort/bindings/gstreamer/CMakeLists.txt	2024-07-02 23:30:29
+@@ -34,11 +34,11 @@ add_library(gsthailo SHARED
+     gst-hailo/metadata/tensor_meta.cpp
+     gst-hailo/hailo_events/hailo_events.cpp)
+ 
+-set_property(TARGET gsthailo PROPERTY CXX_STANDARD 14)
++set_property(TARGET gsthailo PROPERTY CXX_STANDARD 17)
+ 
+ set_target_properties(gsthailo PROPERTIES
+     PUBLIC_HEADER "gst-hailo/metadata/tensor_meta.hpp"
+-    CXX_STANDARD              14
++    CXX_STANDARD              17
+     CXX_STANDARD_REQUIRED     YES
+     CXX_EXTENSIONS            NO
+     C_VISIBILITY_PRESET       hidden
+diff -Nurp a/hailort/libhailort/bindings/python/src/CMakeLists.txt b/hailort/libhailort/bindings/python/src/CMakeLists.txt
+--- a/hailort/libhailort/bindings/python/src/CMakeLists.txt	2024-05-16 09:11:22
++++ b/hailort/libhailort/bindings/python/src/CMakeLists.txt	2024-07-02 23:30:29
+@@ -41,7 +41,7 @@ set_target_properties(_pyhailort PROPERTIES
+ )
+ 
+ set_target_properties(_pyhailort PROPERTIES
+-    CXX_STANDARD              14
++    CXX_STANDARD              17
+     CXX_STANDARD_REQUIRED     YES
+     CXX_EXTENSIONS            NO
+     C_VISIBILITY_PRESET       hidden
+diff -Nurp a/hailort/libhailort/src/CMakeLists.txt b/hailort/libhailort/src/CMakeLists.txt
+--- a/hailort/libhailort/src/CMakeLists.txt	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/CMakeLists.txt	2024-07-02 23:30:29
+@@ -131,7 +131,7 @@ set_target_properties(libhailort PROPERTIES
+     VERSION ${HAILORT_MAJOR_VERSION}.${HAILORT_MINOR_VERSION}.${HAILORT_REVISION_VERSION}
+     # SOVERSION ${HAILORT_MAJOR_VERSION}
+ 
+-    CXX_STANDARD              14
++    CXX_STANDARD              17
+     CXX_STANDARD_REQUIRED     YES
+     CXX_EXTENSIONS            NO
+     C_VISIBILITY_PRESET       hidden
+diff -Nurp a/hailort/rpc/CMakeLists.txt b/hailort/rpc/CMakeLists.txt
+--- a/hailort/rpc/CMakeLists.txt	2024-05-16 09:11:22
++++ b/hailort/rpc/CMakeLists.txt	2024-07-02 23:30:31
+@@ -36,7 +36,7 @@ set_target_properties(hailort_rpc_grpc_proto PROPERTIE
+     ${hailort_rpc_proto_hdrs})
+ 
+ set_target_properties(hailort_rpc_grpc_proto PROPERTIES POSITION_INDEPENDENT_CODE ON)
+-target_link_libraries(hailort_rpc_grpc_proto libprotobuf-lite grpc++_unsecure)
++target_link_libraries(hailort_rpc_grpc_proto protobuf-lite grpc++_unsecure)
+ # Include generated *.pb.h files
+ target_include_directories(hailort_rpc_grpc_proto PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
+ disable_exceptions(hailort_rpc_grpc_proto)
+\ No newline at end of file
+
+diff -Nurp a/hailort/libhailort/bindings/gstreamer/CMakeLists.txt b/hailort/libhailort/bindings/gstreamer/CMakeLists.txt
+--- a/hailort/libhailort/bindings/gstreamer/CMakeLists.txt	2024-07-03 08:55:24
++++ b/hailort/libhailort/bindings/gstreamer/CMakeLists.txt	2024-07-03 08:55:36
+@@ -47,7 +47,7 @@ target_compile_options(gsthailo PRIVATE
+ )
+ 
+ target_compile_options(gsthailo PRIVATE
+-    -Werror -Wall -Wextra -Wconversion
++    -Wall -Wextra -Wconversion
+     -DVERSION="${GST_HAILO_VERSION}"
+     -DPACKAGE="${GST_HAILO_PACKAGE_NAME}")
+ 
+diff -Nurp a/hailort/libhailort/CMakeLists.txt b/hailort/libhailort/CMakeLists.txt
+--- a/hailort/libhailort/CMakeLists.txt	2024-07-03 19:41:37.849036734 +0000
++++ b/hailort/libhailort/CMakeLists.txt	2024-07-03 19:41:44.285114503 +0000
+@@ -12,7 +12,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_S
+ protobuf_generate_cpp(PROTO_HEF_SRC PROTO_HEF_HEADER hef.proto)
+ protobuf_generate_python(PROTO_HEF_PY hef.proto) # TODO (HRT-12504): Copy hef_pb2.py to tools directory
+ 
+-add_library(hef_proto ${PROTO_HEF_SRC} ${PROTO_HEF_HEADER} ${PROTO_HEF_PY})
++add_library(hef_proto STATIC ${PROTO_HEF_SRC} ${PROTO_HEF_HEADER} ${PROTO_HEF_PY})
+ target_link_libraries(hef_proto protobuf-lite)
+ set_target_properties(hef_proto PROPERTIES CXX_STANDARD 17 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
+ if(CMAKE_HOST_WIN32)
+@@ -31,7 +31,7 @@ if(HAILO_BUILD_PROFILER)
+ endif()
+ 
+ protobuf_generate_cpp(PROTO_SCHEDULER_MON_SRC PROTO_SCHEDULER_MON_HEADR scheduler_mon.proto)
+-add_library(scheduler_mon_proto ${PROTO_SCHEDULER_MON_SRC} ${PROTO_SCHEDULER_MON_HEADR})
++add_library(scheduler_mon_proto STATIC ${PROTO_SCHEDULER_MON_SRC} ${PROTO_SCHEDULER_MON_HEADR})
+ target_link_libraries(scheduler_mon_proto protobuf-lite)
+ set_target_properties(scheduler_mon_proto PROPERTIES CXX_STANDARD 17 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
+ if(CMAKE_HOST_WIN32)
+@@ -45,7 +45,7 @@ target_include_directories(scheduler_mon
+ )
+ 
+ protobuf_generate_cpp(PROTO_PROFILER_SRC PROTO_PROFILER_HEADR tracer_profiler.proto)
+-add_library(profiler_proto ${PROTO_PROFILER_SRC} ${PROTO_PROFILER_HEADR})
++add_library(profiler_proto STATIC ${PROTO_PROFILER_SRC} ${PROTO_PROFILER_HEADR})
+ target_link_libraries(profiler_proto protobuf-lite)
+ set_target_properties(profiler_proto PROPERTIES CXX_STANDARD 17 GENERATED TRUE POSITION_INDEPENDENT_CODE ON)
+ if(CMAKE_HOST_WIN32)
+
+diff -Nurp a/hailort/libhailort/src/CMakeLists.txt b/hailort/libhailort/src/CMakeLists.txt
+--- a/hailort/libhailort/src/CMakeLists.txt	2024-07-03 19:52:05.908900057 +0000
++++ b/hailort/libhailort/src/CMakeLists.txt	2024-07-03 19:52:36.873293335 +0000
+@@ -63,7 +63,8 @@ set(COMMON_C_SOURCES ${COMMON_C_SOURCES}
+ set(HAILORT_SRCS_ABS ${HAILORT_CPP_SOURCES} ${HAILORT_COMMON_CPP_SOURCES} ${COMMON_C_SOURCES} CACHE INTERNAL "All absolute paths of hailort's source files")
+ 
+ SET_SOURCE_FILES_PROPERTIES(${C_SOURCES} PROPERTIES LANGUAGE CXX)
+-add_library(libhailort SHARED ${HAILORT_SRCS_ABS})
++add_library(libhailort ${HAILORT_SRCS_ABS})
++set_target_properties(libhailort PROPERTIES POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
+ 
+ # Include libraries
+ if(WIN32)
+diff -Nurp a/hailort/libhailort/src/CMakeLists.txt b/hailort/libhailort/src/CMakeLists.txt
+--- a/hailort/libhailort/src/CMakeLists.txt	2024-07-03 22:51:01.330788617 +0000
++++ b/hailort/libhailort/src/CMakeLists.txt	2024-07-03 22:51:11.822920797 +0000
+@@ -197,9 +197,11 @@ install(FILES
+     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/HailoRT
+     COMPONENT libhailort
+ )
++if(BUILD_SHARED_LIBS)
+ install(EXPORT HailoRTTargets
+     FILE HailoRTTargets.cmake
+     NAMESPACE HailoRT::
+     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/HailoRT
+     COMPONENT libhailort
+ )
++endif()

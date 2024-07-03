@@ -1,0 +1,79 @@
+diff -Nurp a/hailort/common/os/posix/traffic_control.cpp b/hailort/common/os/posix/traffic_control.cpp
+--- a/hailort/common/os/posix/traffic_control.cpp	2024-05-16 09:11:22
++++ b/hailort/common/os/posix/traffic_control.cpp	2024-07-02 23:30:29
+@@ -15,6 +15,7 @@
+ #include "byte_order.h"
+ 
+ #include <sstream>
++#include <algorithm>
+ #include <thread>
+ 
+ namespace hailort
+diff -Nurp a/hailort/libhailort/src/net_flow/pipeline/inference_pipeline.cpp b/hailort/libhailort/src/net_flow/pipeline/inference_pipeline.cpp
+--- a/hailort/libhailort/src/net_flow/pipeline/inference_pipeline.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/net_flow/pipeline/inference_pipeline.cpp	2024-07-02 23:30:30
+@@ -17,6 +17,7 @@
+ #include "core_op/resource_manager/resource_manager.hpp"
+ 
+ #include <sstream>
++#include <algorithm>
+ 
+ 
+ namespace hailort
+diff -Nurp a/hailort/libhailort/src/net_flow/pipeline/vstream.cpp b/hailort/libhailort/src/net_flow/pipeline/vstream.cpp
+--- a/hailort/libhailort/src/net_flow/pipeline/vstream.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/net_flow/pipeline/vstream.cpp	2024-07-02 23:30:30
+@@ -24,6 +24,7 @@
+ #include <cstdint>
+ #include <math.h>
+ #include <memory>
++#include <algorithm>
+ 
+ #ifdef HAILO_SUPPORT_MULTI_PROCESS
+ #include "rpc/rpc_definitions.hpp"
+diff -Nurp a/hailort/libhailort/src/net_flow/pipeline/vstream_builder.cpp b/hailort/libhailort/src/net_flow/pipeline/vstream_builder.cpp
+--- a/hailort/libhailort/src/net_flow/pipeline/vstream_builder.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/net_flow/pipeline/vstream_builder.cpp	2024-07-02 23:30:30
+@@ -20,6 +20,8 @@
+ #include "net_flow/ops/yolov5_seg_post_process.hpp"
+ #include "common/runtime_statistics_internal.hpp"
+ 
++#include <algorithm>
++
+ namespace hailort
+ {
+ Expected<std::vector<InputVStream>> VStreamsBuilderUtils::create_inputs(
+diff -Nurp a/hailort/libhailort/src/transform/transform_internal.hpp b/hailort/libhailort/src/transform/transform_internal.hpp
+--- a/hailort/libhailort/src/transform/transform_internal.hpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/transform/transform_internal.hpp	2024-07-02 23:30:31
+@@ -23,6 +23,7 @@
+ 
+ #include <map>
+ #include <vector>
++#include <algorithm>
+ 
+ 
+ namespace hailort
+diff -Nurp a/hailort/libhailort/src/utils/thread_safe_map.hpp b/hailort/libhailort/src/utils/thread_safe_map.hpp
+--- a/hailort/libhailort/src/utils/thread_safe_map.hpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/utils/thread_safe_map.hpp	2024-07-02 23:30:31
+@@ -14,6 +14,7 @@
+ #include <mutex>
+ #include <unordered_map>
+ #include <shared_mutex>
++#include <algorithm>
+ 
+ namespace hailort
+ {
+diff -Nurp a/hailort/libhailort/src/vdevice/scheduler/scheduler_base.hpp b/hailort/libhailort/src/vdevice/scheduler/scheduler_base.hpp
+--- a/hailort/libhailort/src/vdevice/scheduler/scheduler_base.hpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/vdevice/scheduler/scheduler_base.hpp	2024-07-02 23:30:31
+@@ -19,6 +19,7 @@
+ #include "stream_common/stream_internal.hpp"
+ 
+ #include <condition_variable>
++#include <algorithm>
+ 
+ 
+ namespace hailort
+ 

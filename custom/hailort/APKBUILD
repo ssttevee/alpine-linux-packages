@@ -1,0 +1,135 @@
+# Contributor: 
+# Maintainer: 
+pkgname=hailort
+pkgver=4.17.1
+pkgrel=0
+pkgdesc="An open source light-weight and high performance inference framework for Hailo devices"
+url="https://github.com/hailo-ai/hailort"
+arch="all"
+license="MIT"
+depends=""
+depends_dev="$pkgname"
+checkdepends=""
+makedepends="
+	cmake
+	ninja
+	bash
+	spdlog-dev
+	eigen-dev
+	py3-pybind11-dev
+	protobuf-dev
+	grpc-dev
+	benchmark-dev
+	nlohmann-json
+	python3-dev
+	gst-plugins-base-dev
+	py3-setuptools
+	py3-wheel
+	"
+subpackages="
+	$pkgname-static
+	$pkgname-gstreamer:_gst
+	$pkgname-gstreamer-dev:_gst_dev
+	$pkgname-dev
+	py3-$pkgname-pyc
+	py3-$pkgname:_py3
+	"
+source="
+	$pkgname-$pkgver.tar.gz::https://github.com/hailo-ai/hailort/archive/refs/tags/v$pkgver.tar.gz
+	10-cmake.patch
+	20-logs.patch
+	30-imports.patch
+	"
+builddir="$srcdir/$pkgname-$pkgver"
+
+_giturl="https://github.com/hailo-ai/hailort.git"
+_gittag="v$pkgver"
+
+build() {
+	if [ "$CBUILD" != "$CHOST" ]; then
+		local crossopts="-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_HOST_SYSTEM_NAME=Linux"
+	fi
+	cmake -B build -G Ninja \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DBUILD_SHARED_LIBS=OFF \
+		-DCMAKE_BUILD_TYPE=Release \
+		$crossopts
+	cmake --build build --config release
+
+	cmake -B build -G Ninja \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DBUILD_SHARED_LIBS=ON \
+		-DHAILO_BUILD_GSTREAMER=1 \
+		-DHAILO_BUILD_PYBIND=1 \
+		-DPYBIND11_PYTHON_VERSION=$(python --version | awk '{ split($2,v,"."); print v[1] "." v[2] }') \
+		-DCMAKE_BUILD_TYPE=Release \
+		$crossopts
+	cmake --build build --config release
+
+	cd hailort/libhailort/bindings/python/platform
+	python3 setup.py build
+}
+
+check() {
+	ctest --test-dir build --output-on-failure
+}
+
+package() {
+	DESTDIR="$pkgdir" cmake --build build --config release --target install
+	cp "$builddir/build/hailort/libhailort/src/libhailort.a" "$pkgdir/usr/lib/"
+
+	cd hailort/libhailort/bindings/python/platform
+
+	PYTHONPATH=$pkgdir`python3 -c "import site; print(site.getsitepackages()[0])"` \
+	python3 setup.py install \
+		--prefix=/usr \
+		--root="$pkgdir" \
+		--single-version-externally-managed
+
+	pylib=$(echo $pkgdir$PWD/hailo_platform/pyhailort/*.so)
+	cd "$pkgdir"/usr/lib/python3.*/site-packages/hailo_platform/pyhailort/
+	mv "$pylib" $(basename "$pylib" | sed s/gnu/musl/)
+	rm -r "$pkgdir/$(echo "$pylib" | awk -F/ '{ print $2 }')"
+}
+
+_gst() {
+	pkgdesc="$pkgdesc (gstreamer plugin)"
+	depends="gst-plugins-base"
+	license="LGPL 2.1"
+
+	amove usr/lib/libgsthailo.so
+}
+
+_gst_dev() {
+	pkgdesc="$pkgdesc (gstreamer plugin development files)"
+	depends="gst-plugins-base-dev $pkgname-gstreamer"
+	license="LGPL 2.1"
+
+	amove usr/include/gstreamer*
+}
+
+_py3() {
+	pkgdesc="$pkgdesc (python module)"
+	depends="
+		py3-argcomplete
+		py3-future
+		py3-importlib-metadata
+		py3-importlib-resources
+		py3-netaddr
+		py3-netifaces
+		py3-numpy
+		py3-verboselogs
+	"
+
+	amove usr/bin/hailo
+	amove usr/lib/python3.*
+}
+
+sha512sums="
+5381fe97f72801c23a8550922bf7cc18f680b8a9610185f326d45ccc9a7fb0a05282b04d154ed04d926308da296188b35dbfbf2b5d5994be5a4eba0d8d1f944d  hailort-4.17.1.tar.gz
+725463c6f2c04416eb72b1ae0db91256f23a03bae9c0bfb459aa3ebb59f8e677874cb1e3c085b8ecd253d7b936ed9bb54efbc42a9c7b16813fe164af67d7f71e  10-cmake.patch
+3d89ceaa2b8d32e63bcfe28706f666b6395d41d10686a7c0faeca10354849305a218cf3c9956a86903c51134c3a3cf55819638d49a436cee5b600ad18cac064d  20-logs.patch
+1e6ea37057f7568078c8353c7ffb7e1daf9de208ecbd3c98e6ea9cdc0ff4d91c44d2fbdb9464ac9aaa57c38d5ed983ca2654a428c499316376c9940a87d6eabc  30-imports.patch
+"

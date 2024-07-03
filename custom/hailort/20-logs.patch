@@ -1,0 +1,464 @@
+diff -Nurp a/hailort/common/utils.hpp b/hailort/common/utils.hpp
+--- a/hailort/common/utils.hpp	2024-05-16 09:11:22
++++ b/hailort/common/utils.hpp	2024-07-02 23:30:29
+@@ -16,14 +16,32 @@
+ #include "hailo/expected.hpp"
+ 
+ #include "common/logger_macros.hpp"
+-#include <spdlog/fmt/bundled/core.h>
++#include <spdlog/fmt/fmt.h>
++#include <spdlog/fmt/ostr.h>
+ 
+ #include <assert.h>
+ #include <map>
+ #include <set>
+ #include <unordered_set>
+ 
++template<>
++struct fmt::formatter<hailo_status> : fmt::formatter<std::string>
++{
++    auto format(hailo_status status, format_context &ctx) const -> decltype(ctx.out())
++    {
++        return format_to(ctx.out(), "[hailo_status {}]", (int)status);
++    }
++};
+ 
++template<>
++struct fmt::formatter<hailo_format_type_t> : fmt::formatter<std::string>
++{
++    auto format(hailo_format_type_t status, format_context &ctx) const -> decltype(ctx.out())
++    {
++        return format_to(ctx.out(), "[hailo_format_type_t {}]", (int)status);
++    }
++};
++
+ namespace hailort
+ {
+ 
+@@ -167,7 +185,6 @@ _ISEMPTY(                                             
+ #define __CONSTRUCT_MSG(is_dft, dft_fmt, usr_fmt, ...) __CONSTRUCT_MSG_##is_dft(dft_fmt, usr_fmt, ##__VA_ARGS__)
+ #define _CONSTRUCT_MSG(is_dft, dft_fmt, usr_fmt, ...) __CONSTRUCT_MSG(is_dft, dft_fmt, usr_fmt, ##__VA_ARGS__)
+ #define CONSTRUCT_MSG(dft_fmt, ...) _CONSTRUCT_MSG(ISEMPTY(__VA_ARGS__), dft_fmt, "" __VA_ARGS__)
+-
+ 
+ inline hailo_status get_status(hailo_status status)
+ {
+diff -Nurp a/hailort/libhailort/src/core_op/core_op.cpp b/hailort/libhailort/src/core_op/core_op.cpp
+--- a/hailort/libhailort/src/core_op/core_op.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/core_op/core_op.cpp	2024-07-02 23:30:30
+@@ -511,7 +511,7 @@ Expected<std::shared_ptr<InputStreamBase>> CoreOp::cre
+             }
+ 
+         default:
+-            LOGGER__ERROR("{} interface is not supported.", stream_params.stream_interface);
++            LOGGER__ERROR("{} interface is not supported.", (int)stream_params.stream_interface);
+             return make_unexpected(HAILO_NOT_IMPLEMENTED);
+     }
+ 
+@@ -630,7 +630,7 @@ Expected<std::shared_ptr<OutputStreamBase>> CoreOp::cr
+             }
+ 
+         default:
+-            LOGGER__ERROR("{} interface is not supported.", stream_params.stream_interface);
++            LOGGER__ERROR("{} interface is not supported.", (int)stream_params.stream_interface);
+             return make_unexpected(HAILO_NOT_IMPLEMENTED);
+     }
+ 
+diff -Nurp a/hailort/libhailort/src/core_op/resource_manager/resource_manager_builder.cpp b/hailort/libhailort/src/core_op/resource_manager/resource_manager_builder.cpp
+--- a/hailort/libhailort/src/core_op/resource_manager/resource_manager_builder.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/core_op/resource_manager/resource_manager_builder.cpp	2024-07-02 23:30:30
+@@ -1037,7 +1037,7 @@ static Expected<ContextSwitchConfigActionPtr> create_s
+     CHECK_AS_EXPECTED((ContextSwitchConfigAction::Type::EnableLcuDefault == action->get_type()) ||
+         (ContextSwitchConfigAction::Type::SwitchLcuBatch == action->get_type()) ||
+         (ContextSwitchConfigAction::Type::EnableLcuNonDefault == action->get_type()), HAILO_INVALID_ARGUMENT,
+-        "Invalid action type - must be enable lcu (default or non default) or switch lcu batch, Received type {}", action->get_type());
++        "Invalid action type - must be enable lcu (default or non default) or switch lcu batch, Received type {}", (int)action->get_type());
+ 
+     const auto params_buffer = action->serialize_params(context_resources);
+     CHECK_EXPECTED(params_buffer);
+diff -Nurp a/hailort/libhailort/src/device_common/control.cpp b/hailort/libhailort/src/device_common/control.cpp
+--- a/hailort/libhailort/src/device_common/control.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/device_common/control.cpp	2024-07-02 23:30:30
+@@ -104,7 +104,7 @@ Expected<hailo_device_identity_t> control__parse_ident
+             );
+     LOGGER__DEBUG("Protocol version: {}", board_info.protocol_version);
+     LOGGER__DEBUG("Logger version: {}", board_info.logger_version);
+-    LOGGER__DEBUG("Device architecture code: {}", board_info.device_architecture);
++    LOGGER__DEBUG("Device architecture code: {}", (int)board_info.device_architecture);
+ 
+     return board_info;
+ }
+@@ -225,14 +225,14 @@ hailo_status log_detailed_fw_error(const Device &devic
+         LOGGER__ERROR("Firmware major status: {}", firmware_status_text);
+     } else {
+         LOGGER__ERROR("Cannot find textual address for firmware status {:#x}, common_status = {}",
+-            (FIRMWARE_STATUS_t)fw_status.major_status, common_status);
++            (int)fw_status.major_status, (int)common_status);
+     }
+     common_status = FIRMWARE_STATUS__get_textual((FIRMWARE_STATUS_t)fw_status.minor_status, &firmware_status_text);
+     if (HAILO_COMMON_STATUS__SUCCESS == common_status) {
+         LOGGER__ERROR("Firmware minor status: {}", firmware_status_text);
+     } else {
+         LOGGER__ERROR("Cannot find textual address for firmware status {:#x}, common_status = {}",
+-            (FIRMWARE_STATUS_t)fw_status.minor_status, common_status);
++            (int)fw_status.minor_status, (int)common_status);
+     }
+ 
+     if ((CONTROL_PROTOCOL_STATUS_CONTROL_UNSUPPORTED == fw_status.minor_status) ||
+@@ -1181,7 +1181,7 @@ hailo_status Control::set_power_measurement(Device &de
+     CONTROL_PROTOCOL__set_power_measurement_response_t *response = NULL;
+ 
+     CHECK(CONTROL_PROTOCOL__MAX_NUMBER_OF_POWER_MEASUREMETS > buffer_index,
+-        HAILO_INVALID_ARGUMENT, "Invalid power measurement index {}", buffer_index);
++        HAILO_INVALID_ARGUMENT, "Invalid power measurement index {}", (int)buffer_index);
+ 
+     common_status = CONTROL_PROTOCOL__pack_set_power_measurement_request(&request, &request_size, device.get_control_sequence(),
+             buffer_index, dvm, measurement_type);
+@@ -1229,7 +1229,7 @@ hailo_status Control::get_power_measurement(Device &de
+ 
+     /* Validate arguments */
+     CHECK(CONTROL_PROTOCOL__MAX_NUMBER_OF_POWER_MEASUREMETS > buffer_index,
+-        HAILO_INVALID_ARGUMENT, "Invalid power measurement index {}", buffer_index);
++        HAILO_INVALID_ARGUMENT, "Invalid power measurement index {}", (int)buffer_index);
+     CHECK_ARG_NOT_NULL(measurement_data);
+     common_status = CONTROL_PROTOCOL__pack_get_power_measurement_request(&request, &request_size, device.get_control_sequence(),
+             buffer_index, should_clear);
+@@ -2460,7 +2460,7 @@ hailo_status Control::idle_time_get_measurement(Device
+     common_status = CONTROL_PROTOCOL__pack_idle_time_get_measuremment_request(&request, &request_size, device.get_control_sequence());
+     status = (HAILO_COMMON_STATUS__SUCCESS == common_status) ? HAILO_SUCCESS : HAILO_INTERNAL_FAILURE;
+     if (HAILO_SUCCESS != status) {
+-        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_idle_time_get_measuremment_request with status {:#X}", common_status);
++        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_idle_time_get_measuremment_request with status {:#X}", (int)common_status);
+         goto exit;
+     }
+ 
+@@ -2507,7 +2507,7 @@ hailo_status Control::idle_time_set_measurement(Device
+     common_status = CONTROL_PROTOCOL__pack_idle_time_set_measuremment_request(&request, &request_size, device.get_control_sequence(), measurement_enable);
+     status = (HAILO_COMMON_STATUS__SUCCESS == common_status) ? HAILO_SUCCESS : HAILO_INTERNAL_FAILURE;
+     if (HAILO_SUCCESS != status) {
+-        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_idle_time_set_measuremment_request with status {:#X}", common_status);
++        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_idle_time_set_measuremment_request with status {:#X}", (int)common_status);
+         goto exit;
+     }
+ 
+@@ -2732,7 +2732,7 @@ hailo_status Control::wd_enable(Device &device, uint8_
+     common_status = CONTROL_PROTOCOL__pack_wd_enable(&request, &request_size, device.get_control_sequence(), cpu_id, should_enable);
+     status = (HAILO_COMMON_STATUS__SUCCESS == common_status) ? HAILO_SUCCESS : HAILO_INTERNAL_FAILURE;
+     if (HAILO_SUCCESS != status) {
+-        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_wd_enable with status {:#X}", common_status);
++        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_wd_enable with status {:#X}", (int)common_status);
+         goto exit;
+     }
+ 
+@@ -2767,7 +2767,7 @@ hailo_status Control::wd_config(Device &device, uint8_
+     common_status = CONTROL_PROTOCOL__pack_wd_config(&request, &request_size, device.get_control_sequence(), cpu_id, wd_cycles, wd_mode);
+     status = (HAILO_COMMON_STATUS__SUCCESS == common_status) ? HAILO_SUCCESS : HAILO_INTERNAL_FAILURE;
+     if (HAILO_SUCCESS != status) {
+-        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_wd_config with status {:#X}", common_status);
++        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_wd_config with status {:#X}", (int)common_status);
+         goto exit;
+     }
+ 
+@@ -2806,7 +2806,7 @@ hailo_status Control::previous_system_state(Device &de
+     common_status = CONTROL_PROTOCOL__pack_previous_system_state(&request, &request_size, device.get_control_sequence(), cpu_id);
+     status = (HAILO_COMMON_STATUS__SUCCESS == common_status) ? HAILO_SUCCESS : HAILO_INTERNAL_FAILURE;
+     if (HAILO_SUCCESS != status) {
+-        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_previous_system_state with status {:#X}", common_status);
++        LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_previous_system_state with status {:#X}", (int)common_status);
+         goto exit;
+     }
+ 
+@@ -2957,7 +2957,7 @@ hailo_status Control::clear_configured_apps(Device &de
+     status = (HAILO_COMMON_STATUS__SUCCESS == common_status) ? HAILO_SUCCESS : HAILO_INTERNAL_FAILURE;
+     if (HAILO_SUCCESS != status) {
+         LOGGER__ERROR("failed CONTROL_PROTOCOL__pack_context_switch_clear_configured_apps_request with status {:#X}",
+-            common_status);
++            (int)common_status);
+         goto exit;
+     }
+ 
+diff -Nurp a/hailort/libhailort/src/device_common/d2h_events_parser.cpp b/hailort/libhailort/src/device_common/d2h_events_parser.cpp
+--- a/hailort/libhailort/src/device_common/d2h_events_parser.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/device_common/d2h_events_parser.cpp	2024-07-02 23:30:30
+@@ -416,7 +416,7 @@ static HAILO_COMMON_STATUS_t D2H_EVENTS__parse_context
+     
+     status = FIRMWARE_STATUS__get_textual((FIRMWARE_STATUS_t)run_time_error_status, &run_time_error_status_text);
+     CHECK_COMMON_STATUS((HAILO_COMMON_STATUS__SUCCESS == status), status, 
+-        "Cannot find textual address for run time status {:#x}, status = {}", (FIRMWARE_STATUS_t)run_time_error_status, status);
++        "Cannot find textual address for run time status {:#x}, status = {}", (int)run_time_error_status, (int)status);
+ 
+     LOGGER__ERROR("Got Context switch run time error on net_group index {}, batch index {}, context index {}, action index {} with status {}",
+         d2h_notification_message->message_parameters.context_switch_run_time_error_event.application_index,
+diff -Nurp a/hailort/libhailort/src/device_common/device_internal.cpp b/hailort/libhailort/src/device_common/device_internal.cpp
+--- a/hailort/libhailort/src/device_common/device_internal.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/device_common/device_internal.cpp	2024-07-02 23:30:30
+@@ -174,7 +174,7 @@ Expected<firmware_type_t> DeviceBase::get_fw_type()
+         firmware_type = FIRMWARE_TYPE_PLUTO;
+     }
+     else {
+-        LOGGER__ERROR("Invalid device arcitecture. {}", architecture.value());
++        LOGGER__ERROR("Invalid device arcitecture. {}", (int)architecture.value());
+         return make_unexpected(HAILO_INVALID_DEVICE_ARCHITECTURE);
+     }
+ 
+@@ -205,7 +205,7 @@ hailo_status DeviceBase::firmware_update(const MemoryV
+     fw_header_status = FIRMWARE_HEADER_UTILS__validate_fw_headers((uintptr_t) firmware_binary.data(), static_cast<uint32_t>(firmware_binary.size()), false,
+         &new_app_firmware_header, &new_core_firmware_header, NULL, firmware_type.value());
+     CHECK(HAILO_COMMON_STATUS__SUCCESS == fw_header_status, HAILO_INVALID_FIRMWARE,
+-        "FW update validation failed with status {}", fw_header_status);
++        "FW update validation failed with status {}", (int)fw_header_status);
+ 
+     // TODO: Are we ok with doing another identify here?
+     auto board_info_before_update_expected = Control::identify(*this);
+@@ -285,7 +285,7 @@ hailo_status DeviceBase::firmware_update(const MemoryV
+         LOGGER__INFO("Resetting...");
+         status = reset(get_default_reset_mode());
+         CHECK(HAILO_COMMON_STATUS__SUCCESS == fw_header_status, HAILO_INVALID_FIRMWARE,
+-            "FW update validation failed with status {}", fw_header_status);
++            "FW update validation failed with status {}", (int)fw_header_status);
+         CHECK((status == HAILO_SUCCESS) || (status == HAILO_UNSUPPORTED_CONTROL_PROTOCOL_VERSION), status);
+ 
+         auto board_info_after_install_expected = Control::identify(*this);
+@@ -349,7 +349,7 @@ hailo_status DeviceBase::second_stage_update(uint8_t* 
+     second_stage_header_status = FIRMWARE_HEADER_UTILS__validate_second_stage_headers((uintptr_t) second_stage_binary,
+         second_stage_binary_length, &new_second_stage_header, firmware_type.value());
+     CHECK(HAILO_COMMON_STATUS__SUCCESS == second_stage_header_status, HAILO_INVALID_SECOND_STAGE,
+-            "Second stage update validation failed with status {}", second_stage_header_status);
++            "Second stage update validation failed with status {}", (int)second_stage_header_status);
+ 
+     new_second_stage_version.firmware_major = new_second_stage_header->firmware_major;
+     new_second_stage_version.firmware_minor = new_second_stage_header->firmware_minor;
+@@ -562,7 +562,7 @@ void DeviceBase::d2h_notification_thread_main(const st
+         /* Parse and print the Event info */
+         auto d2h_status = D2H_EVENTS__parse_event(&notification);
+         if (HAILO_COMMON_STATUS__SUCCESS != d2h_status) {
+-            LOGGER__ERROR("[{}] Fail to Parse firmware notification {} status is {}", device_id, notification.header.event_id, d2h_status);
++            LOGGER__ERROR("[{}] Fail to Parse firmware notification {} status is {}", device_id, notification.header.event_id, (int)d2h_status);
+             continue;
+         }
+ 
+@@ -703,7 +703,7 @@ hailo_status DeviceBase::validate_binary_version_for_p
+     HAILO_COMMON_STATUS_t binary_status = FIRMWARE_HEADER_UTILS__validate_binary_version(new_binary_version, min_supported_binary_version,
+                                                                                          fw_binary_type);
+     CHECK(HAILO_COMMON_STATUS__SUCCESS == binary_status, HAILO_INVALID_FIRMWARE,
+-                    "FW binary version validation failed with status {}", binary_status);
++                    "FW binary version validation failed with status {}", (int)binary_status);
+     return HAILO_SUCCESS;
+ }
+ 
+diff -Nurp a/hailort/libhailort/src/hef/hef.cpp b/hailort/libhailort/src/hef/hef.cpp
+--- a/hailort/libhailort/src/hef/hef.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/hef/hef.cpp	2024-07-02 23:30:30
+@@ -1618,7 +1618,7 @@ bool HefConfigurator::is_core_hw_padding_supported(con
+     case HAILO_FORMAT_ORDER_NHCW:
+         break;
+     default:
+-        LOGGER__DEBUG("HW padding is not supported for format {} ", layer_info.format.order);
++        LOGGER__DEBUG("HW padding is not supported for format {} ", (int)layer_info.format.order);
+         return false;
+     }
+ 
+@@ -1890,7 +1890,7 @@ static Expected<LayerType> get_layer_type(const ProtoH
+     case PROTO__EDGE_CONNECTION_TYPE__DDR:
+         return LayerType::DDR;
+     default:
+-        LOGGER__ERROR("Not supported edge connection type {}", edge_connection_type);
++        LOGGER__ERROR("Not supported edge connection type {}", (int)edge_connection_type);
+         return make_unexpected(HAILO_INVALID_HEF);
+     }
+ }
+@@ -2413,7 +2413,7 @@ static Expected<ContextSwitchConfigActionPtr> parse_tr
+         return NoneAction::create();
+     }
+     default:
+-        LOGGER__ERROR("Unsupported trigger given {}", trigger_proto.trigger_case());
++        LOGGER__ERROR("Unsupported trigger given {}", (int)trigger_proto.trigger_case());
+         return make_unexpected(HAILO_INVALID_HEF);
+     }
+ }
+@@ -2593,7 +2593,7 @@ static Expected<ContextSwitchConfigActionPtr> parse_ac
+                 proto_action.write_data_by_type().address());
+             CHECK_AS_EXPECTED(proto_action.write_data_by_type().data_type() == ProtoHEFWriteDataType::DATA_FROM_ACTION ||
+                 proto_action.write_data_by_type().data_type() == ProtoHEFWriteDataType::BATCH_SIZE, HAILO_INVALID_HEF,
+-                "Failed to parse HEF. Invalid write_data_by_type data_type: {} ", proto_action.write_data_by_type().data_type());
++                "Failed to parse HEF. Invalid write_data_by_type data_type: {} ", (int)proto_action.write_data_by_type().data_type());
+             CHECK_AS_EXPECTED(proto_action.write_data_by_type().data().length() <= CONTEXT_SWITCH_DEFS__WRITE_ACTION_BY_TYPE_MAX_SIZE, HAILO_INVALID_HEF,
+                 "Failed to parse HEF. Invalid write_data_by_type data size: {} ", proto_action.write_data_by_type().data().length());
+             CHECK_AS_EXPECTED(IS_FIT_IN_UINT8(proto_action.write_data_by_type().shift()), HAILO_INVALID_HEF,
+@@ -2620,7 +2620,7 @@ static Expected<ContextSwitchConfigActionPtr> parse_ac
+             return WriteDataByTypeAction::create(address, data_type, data, shift, mask, network_index);
+         }
+         default:
+-            LOGGER__ERROR("Action {} not implemented", proto_action.action_case());
++            LOGGER__ERROR("Action {} not implemented", (int)proto_action.action_case());
+             break;
+     }
+ 
+@@ -2873,7 +2873,7 @@ static Expected<hailo_nms_burst_type_t> get_nms_burst_
+         case PROTO__NMS_BURST_TYPE__H8_PER_CLASS:
+             return HAILO_BURST_TYPE_H8_PER_CLASS;
+         default:
+-            LOGGER__ERROR("Unsupported burst type was given {} for arch {}", nms_info.burst_type(), hef_arch);
++            LOGGER__ERROR("Unsupported burst type was given {} for arch {}", (int)nms_info.burst_type(), (int)hef_arch);
+             return make_unexpected(HAILO_INVALID_HEF);
+         }
+     case PROTO__HW_ARCH__HAILO15H:
+@@ -2888,11 +2888,11 @@ static Expected<hailo_nms_burst_type_t> get_nms_burst_
+         case PROTO__NMS_BURST_TYPE__H15_PER_FRAME:
+             return HAILO_BURST_TYPE_H15_PER_FRAME;
+         default:
+-            LOGGER__ERROR("Unsupported burst type was given {} for arch {}", nms_info.burst_type(), hef_arch);
++            LOGGER__ERROR("Unsupported burst type was given {} for arch {}", (int)nms_info.burst_type(), (int)hef_arch);
+             return make_unexpected(HAILO_INVALID_HEF);
+         }
+     default:
+-        LOGGER__ERROR("Not supported hef arch {}", hef_arch);
++        LOGGER__ERROR("Not supported hef arch {}", (int)hef_arch);
+         return make_unexpected(HAILO_INTERNAL_FAILURE);
+     }
+ }
+@@ -2902,7 +2902,7 @@ static Expected<hailo_nms_burst_type_t> get_nms_bbox_m
+ {
+     CHECK_AS_EXPECTED(0 == nms_info.burst_type(),
+         HAILO_INVALID_HEF, "Invalid HEF, nms burst extension is disabled yet burst type {} is not zero",
+-        nms_info.burst_type());
++        (int)nms_info.burst_type());
+ 
+     switch (hef_arch) {
+     case PROTO__HW_ARCH__HAILO8:
+@@ -2919,7 +2919,7 @@ static Expected<hailo_nms_burst_type_t> get_nms_bbox_m
+         return HAILO_BURST_TYPE_H15_BBOX;
+ 
+     default:
+-        LOGGER__ERROR("Not supported hef arch {}", hef_arch);
++        LOGGER__ERROR("Not supported hef arch {}", (int)hef_arch);
+         return make_unexpected(HAILO_INTERNAL_FAILURE);
+     }
+ }
+diff -Nurp a/hailort/libhailort/src/stream_common/nms_stream.cpp b/hailort/libhailort/src/stream_common/nms_stream.cpp
+--- a/hailort/libhailort/src/stream_common/nms_stream.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/stream_common/nms_stream.cpp	2024-07-02 23:30:30
+@@ -77,7 +77,7 @@ hailo_status NMSStreamReader::advance_state_machine(NM
+             if (HAILO_BURST_TYPE_H8_PER_CLASS == burst_type) {
+                 CHECK_IN_DEBUG((NMSBurstState::NMS_BURST_STATE_WAITING_FOR_DELIMETER == (*burst_state)) ||
+                     (NMSBurstState::NMS_BURST_STATE_WAITING_FOR_PADDING == (*burst_state)), HAILO_NMS_BURST_INVALID_DATA,
+-                    "Invalid state, H8 NMS burst cannot receive delimeter while in state {}", (*burst_state));
++                    "Invalid state, H8 NMS burst cannot receive delimeter while in state {}", (int)(*burst_state));
+                 // To differentiate from H8 padding - where we should not increment amount of delimeters found
+                 if ((*burst_state) == NMSBurstState::NMS_BURST_STATE_WAITING_FOR_DELIMETER) {
+                     (*num_delimeters_received)++;
+@@ -99,12 +99,12 @@ hailo_status NMSStreamReader::advance_state_machine(NM
+ 
+             } else if (HAILO_BURST_TYPE_H15_PER_CLASS == burst_type) {
+                 CHECK_IN_DEBUG(NMSBurstState::NMS_BURST_STATE_WAITING_FOR_DELIMETER == (*burst_state), HAILO_NMS_BURST_INVALID_DATA,
+-                    "Invalid state, H15 Per class NMS burst cannot receive delimeter while in state {}", (*burst_state));
++                    "Invalid state, H15 Per class NMS burst cannot receive delimeter while in state {}", (int)(*burst_state));
+                 (*num_delimeters_received)++;
+                 *burst_state = NMSBurstState::NMS_BURST_STATE_WAITING_FOR_IMAGE_DELIMETER;
+             } else {
+                 CHECK_IN_DEBUG(NMSBurstState::NMS_BURST_STATE_WAITING_FOR_DELIMETER == (*burst_state), HAILO_NMS_BURST_INVALID_DATA,
+-                    "Invalid state, H15 Per Frame NMS burst cannot receive delimeter while in state {}", (*burst_state));
++                    "Invalid state, H15 Per Frame NMS burst cannot receive delimeter while in state {}", (int)(*burst_state));
+                 // in hailo15 per frame - if number of delimeter is same as num classes - we expect image delimeter next 
+                 // otherwise expect another delimeter
+                 (*num_delimeters_received)++;
+@@ -121,7 +121,7 @@ hailo_status NMSStreamReader::advance_state_machine(NM
+                 "Invalid state, H8 NMS burst cannot receive image delimeter");
+ 
+             CHECK_IN_DEBUG(NMSBurstState::NMS_BURST_STATE_WAITING_FOR_IMAGE_DELIMETER == (*burst_state), HAILO_NMS_BURST_INVALID_DATA,
+-                "Invalid state, H15 NMS burst cannot receive image delimeter in state {}", (*burst_state));
++                "Invalid state, H15 NMS burst cannot receive image delimeter in state {}", (int)(*burst_state));
+ 
+             // in both hailo15 per class and per frame - when receiving image delimeter we move to expecting padding
+             *burst_state = NMSBurstState::NMS_BURST_STATE_WAITING_FOR_PADDING;
+@@ -143,7 +143,7 @@ hailo_status NMSStreamReader::advance_state_machine(NM
+         {
+             if ((HAILO_BURST_TYPE_H15_PER_CLASS == burst_type) || (HAILO_BURST_TYPE_H15_PER_FRAME == burst_type)) {
+                 CHECK_IN_DEBUG(NMSBurstState::NMS_BURST_STATE_WAITING_FOR_PADDING == (*burst_state), HAILO_NMS_BURST_INVALID_DATA,
+-                    "Invalid state, H15 NMS burst cannot receive padding in state {}", (*burst_state));
++                    "Invalid state, H15 NMS burst cannot receive padding in state {}", (int)(*burst_state));
+             }
+             // In case of padding next state is wait for padding unless it is last padding of burst - then next state will be
+             // Wait for delimeter - will only get to this stage in debug - in release once image delimeter is read we ignore rest of
+diff -Nurp a/hailort/libhailort/src/transform/transform.cpp b/hailort/libhailort/src/transform/transform.cpp
+--- a/hailort/libhailort/src/transform/transform.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/transform/transform.cpp	2024-07-02 23:30:30
+@@ -239,7 +239,7 @@ hailo_status transform__transpose_buffer(const void *s
+     case HAILO_FORMAT_ORDER_F8CR:
+         return transform__transpose_NHWC(src_ptr, shape, HailoRTCommon::get_format_data_bytes(format), dst_ptr);
+     default:
+-        LOGGER__ERROR("Transpose is not supported for order {}", format.order);
++        LOGGER__ERROR("Transpose is not supported for order {}", (int)format.order);
+         return HAILO_INVALID_OPERATION;
+     }
+ }
+diff -Nurp a/hailort/libhailort/src/utils/buffer_storage.cpp b/hailort/libhailort/src/utils/buffer_storage.cpp
+--- a/hailort/libhailort/src/utils/buffer_storage.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/utils/buffer_storage.cpp	2024-07-02 23:37:03
+@@ -51,7 +51,7 @@ Expected<BufferStoragePtr> BufferStorage::create(size_
+     }
+ 
+     // TODO: HRT-10903
+-    LOGGER__ERROR("Buffer storage flags not currently supported {}", params.flags);
++    LOGGER__ERROR("Buffer storage flags not currently supported {}", (int)params.flags);
+     return make_unexpected(HAILO_NOT_IMPLEMENTED);
+ }
+ 
+diff -Nurp a/hailort/libhailort/src/utils/measurement_utils.hpp b/hailort/libhailort/src/utils/measurement_utils.hpp
+--- a/hailort/libhailort/src/utils/measurement_utils.hpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/utils/measurement_utils.hpp	2024-07-02 23:37:25
+@@ -87,7 +87,7 @@
+ #define _HAILO_MEASUREMENT_UTILS_HPP_
+ 
+ #include "measurement_utils_internal.hpp"
+-#include <spdlog/fmt/bundled/format.h>
++#include <spdlog/fmt/fmt.h>
+ 
+ namespace hailort {
+ namespace utils {
+diff -Nurp a/hailort/libhailort/src/utils/soc_utils/partial_cluster_reader.cpp b/hailort/libhailort/src/utils/soc_utils/partial_cluster_reader.cpp
+--- a/hailort/libhailort/src/utils/soc_utils/partial_cluster_reader.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/utils/soc_utils/partial_cluster_reader.cpp	2024-07-02 23:30:31
+@@ -127,14 +127,14 @@ Expected<uint32_t> PartialClusterReader::get_partial_c
+     switch (dev_arch) {
+         case HAILO_ARCH_HAILO15H:
+             CHECK_AS_EXPECTED((HAILO15H_SKU_VALUE == sku_value), HAILO_INTERNAL_FAILURE,
+-                "Device arch is of type {} but sku is {}", dev_arch, sku_value);
++                "Device arch is of type {} but sku is {}", (int)dev_arch, sku_value);
+             break;
+         case HAILO_ARCH_HAILO15M:
+             CHECK_AS_EXPECTED((HAILO15M_SKU_VALUE == sku_value), HAILO_INTERNAL_FAILURE,
+-                "Device arch is of type {} but sku is {}", dev_arch, sku_value);
++                "Device arch is of type {} but sku is {}", (int)dev_arch, sku_value);
+             break;
+         default:
+-            LOGGER__ERROR("Error, Device architecture {} doesnt support partial cluster layout", dev_arch);
++            LOGGER__ERROR("Error, Device architecture {} doesnt support partial cluster layout", (int)dev_arch);
+             return make_unexpected(HAILO_INTERNAL_FAILURE);
+     }
+ 
+diff -Nurp a/hailort/libhailort/src/vdma/channel/channel_id.hpp b/hailort/libhailort/src/vdma/channel/channel_id.hpp
+--- a/hailort/libhailort/src/vdma/channel/channel_id.hpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/vdma/channel/channel_id.hpp	2024-07-02 23:30:31
+@@ -12,7 +12,7 @@
+ 
+ #include "hailo/hailort.h"
+ #include "common/logger_macros.hpp"
+-#include <spdlog/fmt/bundled/format.h>
++#include <spdlog/fmt/fmt.h>
+ #include <sstream>
+ 
+ 
+diff -Nurp a/hailort/libhailort/src/vdma/driver/hailort_driver.cpp b/hailort/libhailort/src/vdma/driver/hailort_driver.cpp
+--- a/hailort/libhailort/src/vdma/driver/hailort_driver.cpp	2024-05-16 09:11:22
++++ b/hailort/libhailort/src/vdma/driver/hailort_driver.cpp	2024-07-02 23:30:31
+@@ -185,7 +185,7 @@ HailoRTDriver::HailoRTDriver(const DeviceInfo &device_
+         m_dma_type = DmaType::DRAM;
+         break;
+     default:
+-        LOGGER__ERROR("Invalid dma type returned from ioctl {}", device_properties.dma_type);
++        LOGGER__ERROR("Invalid dma type returned from ioctl {}", (int)device_properties.dma_type);
+         status = HAILO_DRIVER_FAIL;
+         return;
+     }
+ 
