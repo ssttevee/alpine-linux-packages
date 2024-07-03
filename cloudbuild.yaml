@@ -1,0 +1,85 @@
+steps:
+  - id: qemu
+    name: gcr.io/cloud-builders/docker
+    args:
+      - run
+      - --rm
+      - --privileged
+      - multiarch/qemu-user-static
+      - --reset
+      - -p
+      - 'yes'
+
+  - id: build
+    name: ${_TARGETARCH}/alpine:${_ALPINE_VERSION}
+    script: |
+      set -ex
+
+      apk update && apk add alpine-sdk openssl
+
+      mkdir -p $(dirname "${PACKAGER_PRIVKEY}")
+      printenv PACKAGER_PRIVKEY_DATA > "${PACKAGER_PRIVKEY}"
+      openssl rsa -in "${PACKAGER_PRIVKEY}" -out "${PACKAGER_PRIVKEY}.pub" -pubout
+      cp "${PACKAGER_PRIVKEY}.pub" /etc/apk/keys/
+
+      if [[ -z "$repos" ]]; then
+        repos=`find -maxdepth 1 -mindepth 1 -type d -not -name ".*" | cut -c 3-`
+      fi
+
+      export REPODEST=$PWD/packages
+
+      for repo in $repos; do
+        if [[ ! -d "$repo" ]]; then
+          continue;
+        fi
+
+        if [[ -z "$pkgs" ]]; then
+          pkgs=`cd $repo; find -maxdepth 1 -mindepth 1 -type d -not -name ".*" | cut -c 3-`
+        fi
+
+        for pkg in $pkgs; do
+          if [[ ! -d "$repo/$pkg" ]]; then
+            continue;
+          fi
+
+          cd "$repo/$pkg"
+          MAKEFLAGS=-j`nproc` time abuild -r -F
+          cd -
+        done
+      done
+    secretEnv:
+      - PACKAGER_PRIVKEY_DATA
+    env:
+      - pkgs=${_PKGS}
+      - repos=${_REPOS}
+
+  - name: alpine:${_ALPINE_VERSION}
+    script: |
+      apk add minio-client
+      ls -lahR packages
+      MC_HOST_r2=https://${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}@${REPO_S3_DOMAIN} mcli mirror --overwrite packages r2/alpine-linux-packages/v${ALPINE_VERSION}/
+    secretEnv:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+    env:
+      - ALPINE_VERSION=${_ALPINE_VERSION}
+
+options:
+  env:
+    - PACKAGER_PRIVKEY=/root/.abuild/muki.pw-5f397f18.rsa
+    - REPO_S3_DOMAIN=4d6acaa8562546a4b8cd98ffb3e3a714.r2.cloudflarestorage.com
+
+substitutions:
+  _TARGETARCH: arm64v8
+  _ALPINE_VERSION: '3.18'
+  _REPOS: ''
+  _PKGS: ''
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/854095005385/secrets/alpine-package-signing-key/versions/1
+      env: PACKAGER_PRIVKEY_DATA
+    - versionName: projects/854095005385/secrets/alpine-package-repo-key-id/versions/1
+      env: AWS_ACCESS_KEY_ID
+    - versionName: projects/854095005385/secrets/alpine-package-repo-access-key/versions/1
+      env: AWS_SECRET_ACCESS_KEY

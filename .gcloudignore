@@ -4,3 +4,8 @@
 /.gcloudignore
 /cloudbuild.yaml
 /.devcontainer
+/.abuild
+.DS_Store
+.gitattributes
+.gitignore
+*.sh
